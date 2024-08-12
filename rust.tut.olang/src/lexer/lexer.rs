@@ -1,5 +1,7 @@
-use crate::lexer::{InputReader, TokenLinePosition, TokenLocalisation, TokenMatcherAmpAmp, TokenMatcherBreak, TokenMatcherPipePipe, TokenState};
-use crate::lexer::{TokenMatcherCloseBrace, TokenMatcherContinue, TokenMatcherCommentLine, TokenMatcherCommentMultiLine, };
+use crate::lexer::{InputReader, TokenLinePosition, TokenLocalisation,
+                   TokenMatcherAmpAmp, TokenMatcherBreak, TokenMatcherNull,
+                   TokenMatcherPipePipe, TokenState, TokenMatcherCloseBrace, TokenMatcherContinue,
+                   TokenMatcherCommentLine, TokenMatcherCommentMultiLine};
 use crate::lexer::{TokenMatcherCloseParen, TokenMatcherEqual, TokenMatcherStruct, TokenMatcherVar};
 use crate::lexer::{TokenMatcherComma, TokenMatcherGreaterEqual, TokenMatcherLessEqual, TokenMatcherSemiColon, TokenMatcherStar};
 use crate::lexer::{TokenMatcherEqualEqual, TokenMatcherBang};
@@ -59,7 +61,8 @@ impl<'a> Lexer<'a> {
         matchers.push(Box::new(TokenMatcherStruct {}));
         matchers.push(Box::new(TokenMatcherVar {}));
         matchers.push(Box::new(TokenMatcherContinue {}));
-        matchers.push(Box::new(TokenMatcherBreak{}));
+        matchers.push(Box::new(TokenMatcherBreak {}));
+        matchers.push(Box::new(TokenMatcherNull {}));
 
         Lexer {
             tokens: vec![],
@@ -123,20 +126,20 @@ impl<'a> Lexer<'a> {
 
     fn add_eof(self: &mut Self) {
         self.tokens.push(Token {
-            position:  TokenLocalisation {
-                start : TokenLinePosition{
+            position: TokenLocalisation {
+                start: TokenLinePosition {
                     position: self.reader.line_current,
-                    line_number: self.reader.line
+                    line_number: self.reader.line,
                 },
-                end : TokenLinePosition{
+                end: TokenLinePosition {
                     position: self.reader.line_current,
-                    line_number: self.reader.line
-                }
+                    line_number: self.reader.line,
+                },
             },
             literal_value: None,
             token_type: TokenType::EOF,
             lexeme: "".to_string(),
-            state: TokenState::Ok
+            state: TokenState::Ok,
         });
     }
 }
