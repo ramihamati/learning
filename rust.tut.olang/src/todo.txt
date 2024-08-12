@@ -1,0 +1,14 @@
+break scanning for some identifiers at end of line and increase line number reset line current
+    end of line should be env invariant (EOL does not matter, we can write one liners, but no token is valid in 2 lines)
+
+comptime
+
+source : for injecting at compile time
+
+source fn DoSomething(var){}
+
+source_generate DoSomething(1) // is it worth it or is it like generics?
+// code injection should be usefull
+
+1. lexeme : add the entire thing (in comments include start and end tokens)
+2. token: add position start/position end, line start, line end (position includes the entire thing, the lexeme, not the extracted content)
