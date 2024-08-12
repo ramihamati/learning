@@ -5,14 +5,14 @@ use crate::lexer::matchers::token_matcher_helper::TokenMatcherHelper;
 use crate::lexer::str_classifier::StrClassifier;
 use crate::lexer::TokenType;
 
-pub struct TokenMatcherReturn {}
+pub struct TokenMatcherThis {}
 
-impl<'a> TokenMatcher<'a> for TokenMatcherReturn {
+impl<'a> TokenMatcher<'a> for TokenMatcherThis {
     fn create(&self, reader: &mut InputReader) -> Option<Token> {
         TokenMatcherHelper::match_symbol_bounded_by(
             reader,
-            "return",
-            TokenType::Return,
+            "this",
+            TokenType::This,
             |next_char| {
                 !StrClassifier::is_identifier_char(next_char)
             }

@@ -29,6 +29,7 @@ pub mod token_matcher_bang;
 pub mod token_matcher_fn;
 pub mod token_matcher_null;
 pub mod token_matcher_return;
+pub mod token_matcher_this;
 
 pub use crate::lexer::token_matcher_open_paren::*;
 pub use crate::lexer::token_matcher_close_paren::*;
@@ -61,3 +62,4 @@ pub use crate::lexer::token_matcher_helper::*;
 pub use crate::lexer::token_matcher_fn::*;
 pub use crate::lexer::token_matcher_null::*;
 pub use crate::lexer::token_matcher_return::*;
+pub use crate::lexer::token_matcher_this::*;

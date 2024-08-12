@@ -15,7 +15,7 @@ pub enum TokenType {
     Func,           // fn (OK)
     Nil,            // null (OK)
     Return,         // return (OK)
-    This,           // self,
+    This,           // self, (OK)
     True,           // true,
     False,          // false
     Var,            // (OK) var
