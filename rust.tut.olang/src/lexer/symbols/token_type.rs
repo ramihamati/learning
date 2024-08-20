@@ -13,7 +13,6 @@ pub enum TokenType {
     Loop,           // (OK) while
     Struct,         // (OK) struct
     Func,           // fn (OK)
-    Nil,            // null (OK)
     Return,         // return (OK)
     This,           // self, (OK)
     True,           // true,
@@ -22,12 +21,12 @@ pub enum TokenType {
     Continue,       // (OK) continue
     Break,          // (OK) break
     Public,         // public
-    ScopeReturn,    // <-
+    LeftAssign,     // <-
     // other
     Plus,           // (OK) +
     Minus,          // (OK) -
-    Star,           // *
-    Slash,          // /
+    Star,           // (OK) *
+    ForwardSlash,   // (OK) /
     OpenParen,      // (OK) (
     CloseParen,     // (OK) )
     OpenBrace,      // (OK) {

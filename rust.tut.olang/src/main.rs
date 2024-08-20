@@ -2,7 +2,7 @@ use crate::lexer::Lexer;
 mod lexer;
 
 fn main() {
-    let code = "!=!fn null return this";
+    let code = "!=!fn return this /";
 
     let mut lexer = Lexer::new(code);
     let tokens = lexer.scan_tokens();

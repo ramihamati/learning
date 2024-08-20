@@ -1,5 +1,5 @@
 use crate::lexer::{InputReader, TokenLinePosition, TokenLocalisation, TokenMatcherAmpAmp, TokenMatcherBreak};
-use crate::lexer::{TokenMatcherNull, TokenMatcherPipePipe, TokenState, TokenMatcherCloseBrace};
+use crate::lexer::{TokenMatcherPipePipe, TokenState, TokenMatcherCloseBrace};
 use crate::lexer::{TokenMatcherContinue, TokenMatcherCommentLine, TokenMatcherCommentMultiLine, TokenMatcherReturn};
 use crate::lexer::{TokenMatcherCloseParen, TokenMatcherEqual, TokenMatcherStruct, TokenMatcherVar};
 use crate::lexer::{TokenMatcherComma, TokenMatcherGreaterEqual, TokenMatcherLessEqual, TokenMatcherSemiColon, TokenMatcherStar};
@@ -15,6 +15,7 @@ use crate::lexer::TokenMatcherIf;
 use crate::lexer::TokenMatcherElse;
 use crate::lexer::TokenMatcherLoop;
 use crate::lexer::TokenMatcherThis;
+use crate::lexer::TokenMatcherForwardSlash;
 
 pub struct Lexer<'a> {
     tokens: Vec<Token>,
@@ -52,6 +53,7 @@ impl<'a> Lexer<'a> {
         matchers.push(Box::new(TokenMatcherSemiColon {}));
         matchers.push(Box::new(TokenMatcherStar {}));
         matchers.push(Box::new(TokenMatcherBang {}));
+        matchers.push(Box::new(TokenMatcherForwardSlash {}));
 
         // reserved keywords bound by identifiers
         matchers.push(Box::new(TokenMatcherCommentLine {}));
@@ -62,7 +64,6 @@ impl<'a> Lexer<'a> {
         matchers.push(Box::new(TokenMatcherVar {}));
         matchers.push(Box::new(TokenMatcherContinue {}));
         matchers.push(Box::new(TokenMatcherBreak {}));
-        matchers.push(Box::new(TokenMatcherNull {}));
         matchers.push(Box::new(TokenMatcherReturn {}));
         matchers.push(Box::new(TokenMatcherThis {}));
 

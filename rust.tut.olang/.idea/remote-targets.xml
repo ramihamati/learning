@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="RemoteTargetsManager">
+    <option name="projectDefaultTargetUuid" value="4b8aeb65-62c5-4bbd-934f-893b35aef82d" />
+    <targets>
+      <target name="WSL - Ubuntu-22.04" type="wsl" uuid="4b8aeb65-62c5-4bbd-934f-893b35aef82d">
+        <config>
+          <option name="distributionMsId" value="Ubuntu-22.04" />
+          <option name="projectRootOnTarget" value="{exitCode=0, timeout=false, cancelled=false, stdout=/tmp/tmp.DfI8eQUF9M&#10;, stderr=}/rust.tut.olang" />
+        </config>
+        <ContributedStateBase type="RsLanguageRuntime">
+          <config>
+            <option name="cargoPath" value="/root/.cargo/bin/cargo" />
+            <option name="cargoVersion" value="1.78.0 (54d8815d0 2024-03-26)" />
+            <option name="rustcPath" value="/root/.cargo/bin/rustc" />
+            <option name="rustcVersion" value="error: couldn't read  --version: No such file or directory (os error 2)" />
+          </config>
+        </ContributedStateBase>
+      </target>
+    </targets>
+  </component>
+</project>
