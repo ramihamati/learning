@@ -2,7 +2,6 @@ package mongo
 
 import (
 	"context"
-	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"subscriptions/core/errors"
@@ -15,13 +14,6 @@ const (
 
 type Manager struct {
 	Client *mongo.Client
-	Random string
-}
-
-type SubscriptionPackage struct {
-	Id       uuid.UUID
-	Name     string
-	Features []uuid.UUID
 }
 
 func NewManager(setting ConnectionSettings) Manager {
@@ -42,7 +34,6 @@ func NewManager(setting ConnectionSettings) Manager {
 	}
 
 	return Manager{
-		Random: "stf",
 		Client: client,
 	}
 }

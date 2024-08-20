@@ -1,0 +1,142 @@
+public class MongoConnectionUnit
+{
+    public string ConnectionName { get; }
+    public MongoClient MongoClient { get; set; }
+    public MongoConnectionSettings Options { get; }
+    public Type ConnectionProviderSettingsType { get; }
+
+    public MongoConnectionUnit(
+        IMongoConnectionSettingsProvider connectionSettingsProvider,
+        string connectionName)
+    {
+        ConnectionProviderSettingsType = connectionSettingsProvider.GetType();
+        Options = connectionSettingsProvider.Get();
+        string connectionString = Options.ConnectionString;
+
+        //TODO : create a connection string builder and include some options for the tLS from the site
+        //TODO : check if the connectTimeoutMS is not already added
+        if (connectionString.Contains("?"))
+        {
+            connectionString += $"&connectTimeoutMS={Options.ConnectionTimeout.TotalMilliseconds}";
+        }
+        else
+        {
+            if (!connectionString.EndsWith("/"))
+            {
+                connectionString += "/";
+            }
+            connectionString += $"?connectTimeoutMS={Options.ConnectionTimeout.TotalMilliseconds}";
+        }
+
+        if (!connectionString.Contains("keepAlive"))
+        {
+            connectionString += $"&keepAlive=true";
+        }
+        if (!connectionString.Contains("autoReconnect"))
+        {
+            connectionString += $"&autoReconnect=true";
+        }
+        if (!connectionString.Contains("socketTimeoutMS"))
+        {
+            connectionString += $"&socketTimeoutMS={Options.ConnectionTimeout.TotalMilliseconds}";
+        }
+
+        MongoClient = new MongoClient(connectionString);
+        ConnectionName = connectionName;
+    }
+
+    public IMongoCollection<TDocument> GetCollection<TDocument>(string collectionName, string dbName)
+    {
+        IMongoDatabase database = this.GetDatabase(dbName);
+
+        // PrimaryPreferred: will lead to stale data in an op of reading imediatelly after writting
+        // Primary guarantees consistency
+        return database.GetCollection<TDocument>(collectionName,
+          new MongoCollectionSettings
+          {
+              WriteConcern = WriteConcern.WMajority,
+              ReadConcern = ReadConcern.Majority,
+              ReadPreference = ReadPreference.PrimaryPreferred
+          });
+    }
+
+    public bool HasCollection(string collectionName, string dbName)
+    {
+        IMongoDatabase database = this.GetDatabase(dbName);
+        return database.ListCollectionNames().ToList().Contains(collectionName);
+    }
+
+    public IMongoCollection<TDocument> GetOrCreateCollection<TDocument>(string collectionName, string dbName, IClientSessionHandle session = null)
+        where TDocument : class, IMongoDocument
+    {
+
+        IMongoDatabase database = this.GetDatabase(dbName);
+
+        if (session is null)
+        {
+            /*
+             * In real scenario, when instances will spawn, the collections will be created on the first request.
+             * There can be multiple requests at the same time, and we must ensure that if all of them try to create
+             * the database/collection, if we get an exception that it was already created, we will retry to get the database
+             * and return the existing one
+             *
+             * We cannot have the retry policy in a create with session environment
+             */
+            RetryPolicy retryPolicy
+                = Policy.Handle<Exception>()
+                        .WaitAndRetry(
+                            retryCount: 5,
+                            sleepDurationProvider: _ => TimeSpan.FromMilliseconds(5));
+
+            PolicyResult result = retryPolicy.ExecuteAndCapture(() =>
+            {
+                if (!database.ListCollectionNames().ToList().Contains(collectionName))
+                {
+                    //operations in multi-document transactions don't allow creating collections or altering database
+                    database.CreateCollection(collectionName);
+                }
+            });
+
+            if (result.Outcome == OutcomeType.Failure)
+            {
+                throw result.FinalException;
+            }
+        }
+        else
+        {
+            if (!database.ListCollectionNames(session).ToList().Contains(collectionName))
+            {
+                //operations in multi-document transactions don't allow creating collections or altering database
+                database.CreateCollection(session, collectionName);
+            }
+        }
+
+        return database.GetCollection<TDocument>(collectionName,
+            new MongoCollectionSettings
+            {
+                WriteConcern = WriteConcern.WMajority,
+                ReadConcern = ReadConcern.Majority,
+                ReadPreference = ReadPreference.PrimaryPreferred
+            });
+    }
+
+    public IMongoDatabase GetDatabase(string dbName)
+    {
+        return this.MongoClient.GetDatabase(dbName, new MongoDatabaseSettings
+        {
+            WriteConcern = WriteConcern.WMajority,
+            ReadConcern = ReadConcern.Majority,
+            ReadPreference = ReadPreference.PrimaryPreferred,
+        });
+    }
+
+    public void DropDatabase(string dbName, CancellationToken token = default)
+    {
+        this.MongoClient.DropDatabase(dbName, token);
+    }
+
+    public void Dispose()
+    {
+        this.MongoClient?.Cluster?.Dispose();
+    }
+}

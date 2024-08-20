@@ -15,7 +15,6 @@ func main() {
 
 	manager := mongo.NewManager(settings)
 
-	println(manager.Random)
 	//client, err := mongo.Connect(
 	//	context.TODO(),
 	//	options.Client().ApplyURI(uri))

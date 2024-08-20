@@ -1,0 +1,731 @@
+using MongoDB.Driver;
+using MongoDB.Driver.Linq;
+using System.Dynamic;
+using System.Linq.Expressions;
+
+public class AnyByIdFilter<TDocument> : AnyFilter<TDocument>
+    where TDocument : class, IMongoDocument
+{
+    public AnyByIdFilter(Guid id)
+        : base(new FilterFactoryById<TDocument>(id))
+    {
+    }
+}
+
+
+public abstract class AnyFilter<TDocument>(
+    FilterFactory<TDocument> filterFactory)
+{
+    internal FilterDefinition<TDocument> GetFilterDefinition()
+    {
+        return filterFactory.GetFilterDefinition();
+    }
+}
+
+
+public class AnyEqFilter<TDocument, TProperty> : AnyFilter<TDocument>
+    where TDocument : class, IMongoDocument
+{
+    public AnyEqFilter(Expression<Func<TDocument, TProperty>> getter, TProperty value)
+        : base(new FilterFactoryEq<TDocument, TProperty>(getter, value))
+    {
+    }
+}
+
+public sealed class CollectionUnit<TDocument> where TDocument : class, IMongoDocument
+{
+    public IMongoCollection<TDocument> MongoCollection { get; }
+
+    public CollectionUnit(IMongoCollection<TDocument> mongoCollection)
+    {
+        MongoCollection = mongoCollection;
+    }
+
+    public IMongoQueryable<TDocument> AsQueryable()
+    {
+        return MongoCollection.AsQueryable();
+    }
+
+    public async Task<bool> AnyAsync(AnyFilter<TDocument> anyFilter, IClientSessionHandle session = null)
+    {
+        Ensure.IsNotNull(anyFilter, nameof(anyFilter));
+
+        TDocument result = session != null
+            ? await (await MongoCollection.FindAsync(session, anyFilter.GetFilterDefinition(),
+                new FindOptions<TDocument>
+                {
+                    Limit = 1
+                }).ConfigureAwait(false)).SingleOrDefaultAsync().ConfigureAwait(false)
+            : await (await MongoCollection.FindAsync(anyFilter.GetFilterDefinition(), new FindOptions<TDocument>
+            {
+                Limit = 1
+            }).ConfigureAwait(false)).SingleOrDefaultAsync().ConfigureAwait(false);
+
+        return result != null;
+    }
+
+    public async Task<bool> BulkAsync(BulkOperationBuilder<TDocument> operations, IClientSessionHandle session = null)
+    {
+        Ensure.IsNotNull(operations, nameof(operations));
+
+        IBulkOperationDriverAdapter<TDocument> adapter = (IBulkOperationDriverAdapter<TDocument>)operations;
+        List<WriteModel<TDocument>> writeModels = adapter.GetWriteModels();
+
+        if (session == null)
+        {
+            BulkWriteResult<TDocument> result = await MongoCollection.BulkWriteAsync(writeModels).ConfigureAwait(false);
+            return result.IsAcknowledged;
+        }
+        else
+        {
+            BulkWriteResult<TDocument> result =
+                await MongoCollection.BulkWriteAsync(session, writeModels).ConfigureAwait(false);
+            return result.IsAcknowledged;
+        }
+    }
+
+    public Task<long> CountAsync(CountFilter<TDocument> filter, QueryCountOptions countOptions = null,
+        IClientSessionHandle session = null)
+    {
+        Ensure.IsNotNull(filter, nameof(filter));
+
+        return session != null
+            ? MongoCollection.CountDocumentsAsync(session, filter.GetFilterDefinition(), countOptions?.ToCountOptions())
+            : MongoCollection.CountDocumentsAsync(filter.GetFilterDefinition(), countOptions?.ToCountOptions());
+    }
+
+    public async Task DeleteAsync(DeleteFilter<TDocument> filter, IClientSessionHandle session = null)
+    {
+        Ensure.IsNotNull(filter, nameof(filter));
+
+        DeleteResult result = session == null
+            ? await MongoCollection.DeleteManyAsync(filter.GetFilterDefinition()).ConfigureAwait(false)
+            : await MongoCollection.DeleteManyAsync(session, filter.GetFilterDefinition()).ConfigureAwait(false);
+
+        if (!result.IsAcknowledged)
+        {
+            throw new Exception("Delete not acknowledged");
+        }
+    }
+
+    public async Task<IAsyncEnumerable<TDocument>> FindManyAsync(
+        FindManyFilter<TDocument> filter,
+        QueryFindOptions<TDocument> findOptions = null,
+        IClientSessionHandle session = null)
+    {
+        Ensure.IsNotNull(filter, nameof(filter));
+
+        findOptions ??= new QueryFindOptions<TDocument>();
+
+        FindOptions<TDocument> options = findOptions?.ToFindOptions();
+
+        IAsyncCursor<TDocument> asyncCursor = session != null
+            ? await MongoCollection.FindAsync(session, filter.GetFilterDefinition(), options).ConfigureAwait(false)
+            : await MongoCollection.FindAsync(filter.GetFilterDefinition(), options).ConfigureAwait(false);
+
+        return new BatchAsyncEnumerable<TDocument>(asyncCursor);
+    }
+
+    public async Task<TDocument> FindOneAsync(FindOneFilter<TDocument> filter, IClientSessionHandle session = null)
+    {
+        if (session != null)
+        {
+            return (await MongoCollection
+                .FindAsync(session, filter.GetFilterDefinition(), new FindOptions<TDocument> { Limit = 1 })
+                .ConfigureAwait(false)).SingleOrDefault();
+        }
+
+        return (await MongoCollection
+            .FindAsync(filter.GetFilterDefinition(), new FindOptions<TDocument> { Limit = 1 })
+            .ConfigureAwait(false)).SingleOrDefault();
+    }
+
+    public async Task<IList<TDocument>> InsertManyAsync(IList<TDocument> documents, IClientSessionHandle session = null)
+    {
+        Ensure.IsNotNull(documents, nameof(documents));
+
+        foreach (TDocument document in documents)
+        {
+            document.Id = (document.Id == Guid.Empty) ? Guid.NewGuid() : document.Id;
+        }
+
+        if (session == null)
+        {
+            await MongoCollection.InsertManyAsync(documents).ConfigureAwait(false);
+        }
+        else
+        {
+            await MongoCollection.InsertManyAsync(session, documents).ConfigureAwait(false);
+        }
+
+        return documents;
+    }
+
+    public async Task<TDocument> InsertOneAsync(TDocument document, IClientSessionHandle session = null)
+    {
+        Ensure.IsNotNull(document, nameof(document));
+
+        document.Id = (document.Id == Guid.Empty) ? Guid.NewGuid() : document.Id;
+
+        if (session == null)
+        {
+            await MongoCollection.InsertOneAsync(document).ConfigureAwait(false);
+        }
+        else
+        {
+            await MongoCollection.InsertOneAsync(session, document).ConfigureAwait(false);
+        }
+
+        return document;
+    }
+
+    private async Task<TProjection> ProjectFirstAsyncInternal<TProjection>(
+        FilterDefinition<TDocument> filter,
+        ProjectionOptions<TProjection, TDocument> projectionOptions,
+        IClientSessionHandle session = null) where TProjection : ProjectedEntity<TProjection, TDocument>
+    {
+        Ensure.IsNotNull(filter, nameof(filter));
+        Ensure.IsNotNull(projectionOptions, nameof(projectionOptions));
+
+        List<ProjectionDefinition<TDocument>> projectionDefinitions = new List<ProjectionDefinition<TDocument>>();
+        //- the id is required by default and will be added by default
+        foreach (PropertyProjectionMap<TProjection, TDocument> setting in projectionOptions)
+        {
+            projectionDefinitions.Add(Builders<TDocument>.Projection.Include(setting.EntityProperty));
+        }
+
+        FindOptions<TDocument, ExpandoObject> findOptions = new FindOptions<TDocument, ExpandoObject>
+        {
+            Projection = Builders<TDocument>.Projection.Combine(projectionDefinitions),
+            Limit = 1
+        };
+
+        /*
+         * create filter
+         */
+        IAsyncCursor<ExpandoObject> result = (session == null)
+            ? await MongoCollection.FindAsync(filter, findOptions).ConfigureAwait(false)
+            : await MongoCollection.FindAsync(session, filter, findOptions).ConfigureAwait(false);
+
+        ExpandoObject first = await result.FirstAsync();
+
+        return ((IProjectEntity<TProjection, TDocument>)projectionOptions).ProjectEntity(first);
+    }
+
+    public Task<TProjection> ProjectFirstAsync<TProjection>(
+        FilterDefinition<TDocument> filter,
+        ProjectionOptions<TProjection, TDocument> projectionOptions,
+        IClientSessionHandle session = null) where TProjection : ProjectedEntity<TProjection, TDocument>
+    {
+        return ProjectFirstAsyncInternal(filter, projectionOptions, session);
+    }
+
+    public Task<TProjection> ProjectFirstAsync<TProjection>(
+        Expression<Func<TDocument, bool>> filter,
+        ProjectionOptions<TProjection, TDocument> projectionOptions,
+        IClientSessionHandle session = null)
+        where TProjection : ProjectedEntity<TProjection, TDocument>
+    {
+        return ProjectFirstAsyncInternal(new ExpressionFilterDefinition<TDocument>(filter), projectionOptions, session);
+    }
+
+    public Task<IAsyncEnumerable<TProjection>> ProjectAllAsync<TProjection>(
+        Expression<Action<ProjectionOptions<TProjection, TDocument>>> projectionDefinition,
+        QueryProjectionFindOptions<TDocument> findOptions = null,
+        IClientSessionHandle session = null) where TProjection : ProjectedEntity<TProjection, TDocument>
+    {
+        Ensure.IsNotNull(projectionDefinition, nameof(projectionDefinition));
+
+        findOptions ??= new QueryProjectionFindOptions<TDocument>();
+        /*
+         * collect projection
+         */
+        ProjectionOptions<TProjection, TDocument> projOptions = new ProjectionOptions<TProjection, TDocument>();
+
+        projectionDefinition.Compile()(projOptions);
+
+        return ProjectManyAsyncInternal(FilterDefinition<TDocument>.Empty, projOptions, findOptions, session);
+    }
+
+    public Task<IAsyncEnumerable<TProjection>> ProjectAllAsync<TProjection>(
+        ProjectionOptions<TProjection, TDocument> projectionDefinition,
+        QueryProjectionFindOptions<TDocument> findOptions = null,
+        IClientSessionHandle session = null) where TProjection : ProjectedEntity<TProjection, TDocument>
+    {
+        Ensure.IsNotNull(projectionDefinition, nameof(projectionDefinition));
+
+        findOptions ??= new QueryProjectionFindOptions<TDocument>();
+
+        /*
+         * collect projection
+         */
+
+        return ProjectManyAsyncInternal(FilterDefinition<TDocument>.Empty, projectionDefinition, findOptions, session);
+    }
+
+    private async Task<IAsyncEnumerable<TProjection>> ProjectManyAsyncInternal<TProjection>(
+        FilterDefinition<TDocument> filter,
+        ProjectionOptions<TProjection, TDocument> projectionDefinition,
+        QueryProjectionFindOptions<TDocument> findOptions = null,
+        IClientSessionHandle session = null) where TProjection : ProjectedEntity<TProjection, TDocument>
+    {
+        Ensure.IsNotNull(filter, nameof(filter));
+        Ensure.IsNotNull(projectionDefinition, nameof(projectionDefinition));
+
+        findOptions ??= new QueryProjectionFindOptions<TDocument>();
+
+        /*
+         * create projection settings
+         */
+        FindOptions<TDocument, ExpandoObject> options = findOptions.ToFindOptions<ExpandoObject>();
+
+        List<ProjectionDefinition<TDocument>> projectionDefinitions = new List<ProjectionDefinition<TDocument>>();
+        //- the id is required by default and will be added by default
+        foreach (PropertyProjectionMap<TProjection, TDocument> setting in projectionDefinition)
+        {
+            projectionDefinitions.Add(Builders<TDocument>.Projection.Include(setting.EntityProperty));
+        }
+
+        options.Projection = Builders<TDocument>.Projection.Combine(projectionDefinitions);
+
+        /*
+         * create filter
+         */
+        IAsyncCursor<ExpandoObject> result = (session == null)
+            ? await MongoCollection.FindAsync(filter, options).ConfigureAwait(false)
+            : await MongoCollection.FindAsync(session, filter, options).ConfigureAwait(false);
+
+        return new BatchProjectAsyncEnumerable<ExpandoObject, TProjection>(result, (document) =>
+            ((IProjectEntity<TProjection, TDocument>)projectionDefinition).ProjectEntity(document));
+    }
+
+    public Task<IAsyncEnumerable<TProjection>> ProjectManyAsync<TProjection>(
+        IEnumerable<Guid> documentIds,
+        ProjectionOptions<TProjection, TDocument> projectionDefinition,
+        QueryProjectionFindOptions<TDocument> findOptions = null,
+        IClientSessionHandle session = null) where TProjection : ProjectedEntity<TProjection, TDocument>
+    {
+        Ensure.IsNotNull(documentIds, nameof(documentIds));
+        Ensure.IsNotNull(projectionDefinition, nameof(projectionDefinition));
+
+        findOptions ??= new QueryProjectionFindOptions<TDocument>();
+
+        foreach (var id in documentIds)
+        {
+            Ensure.IsNotEmpty(id, nameof(documentIds));
+        }
+
+        /*
+         * create filter
+         */
+        FilterDefinition<TDocument> filter = Builders<TDocument>.Filter.In<Guid>(x => x.Id, documentIds);
+
+        return ProjectManyAsyncInternal(filter, projectionDefinition, findOptions, session);
+    }
+
+    public Task<IAsyncEnumerable<TProjection>> ProjectManyAsync<TProjection>(
+        Expression<Func<TDocument, bool>> filter,
+        ProjectionOptions<TProjection, TDocument> projectionDefinition,
+        QueryProjectionFindOptions<TDocument> findOptions = null,
+        IClientSessionHandle session = null) where TProjection : ProjectedEntity<TProjection, TDocument>
+    {
+        Ensure.IsNotNull(filter, nameof(filter));
+        Ensure.IsNotNull(projectionDefinition, nameof(projectionDefinition));
+
+        return ProjectManyAsyncInternal(new ExpressionFilterDefinition<TDocument>(filter), projectionDefinition,
+            findOptions, session);
+    }
+
+    public Task<IAsyncEnumerable<TProjection>> ProjectManyAsync<TProjection>(
+        FilterDefinition<TDocument> filter,
+        ProjectionOptions<TProjection, TDocument> projectionOptions,
+        QueryProjectionFindOptions<TDocument> findOptions = null,
+        IClientSessionHandle session = null) where TProjection : ProjectedEntity<TProjection, TDocument>
+    {
+        Ensure.IsNotNull(filter, nameof(filter));
+        Ensure.IsNotNull(projectionOptions, nameof(projectionOptions));
+
+        findOptions ??= new QueryProjectionFindOptions<TDocument>();
+
+        return ProjectManyAsyncInternal<TProjection>(filter, projectionOptions, findOptions, session);
+    }
+
+    public async Task<TProjection> ProjectOneAsync<TProjection>(
+        Guid documentId,
+        ProjectionOptions<TProjection, TDocument> projectionDefinition,
+        IClientSessionHandle session = null) where TProjection : ProjectedEntity<TProjection, TDocument>
+    {
+        Ensure.IsNotNull(projectionDefinition, nameof(projectionDefinition));
+
+        /*
+         * create projection settings
+         */
+        FindOptions<TDocument, ExpandoObject> options = new FindOptions<TDocument, ExpandoObject>();
+
+        List<ProjectionDefinition<TDocument>> projectionDefinitions = new List<ProjectionDefinition<TDocument>>();
+
+        //- the id is required by default and will be added by default
+        foreach (PropertyProjectionMap<TProjection, TDocument> setting in projectionDefinition)
+        {
+            projectionDefinitions.Add(Builders<TDocument>.Projection.Include(setting.EntityProperty));
+        }
+
+        options.Projection = Builders<TDocument>.Projection.Combine(projectionDefinitions);
+
+        /*
+         * create filter
+         */
+        FilterDefinition<TDocument> filter = Builders<TDocument>.Filter.Eq<Guid>(x => x.Id, documentId);
+
+        IAsyncCursor<ExpandoObject> result = (session == null)
+            ? await MongoCollection.FindAsync(filter, options).ConfigureAwait(false)
+            : await MongoCollection.FindAsync(session, filter, options).ConfigureAwait(false);
+
+        ExpandoObject document = await result.SingleOrDefaultAsync().ConfigureAwait(false);
+
+        return ((IProjectEntity<TProjection, TDocument>)projectionDefinition).ProjectEntity(document);
+    }
+
+    public async Task<bool> ReplaceOneAsync(TDocument document, IClientSessionHandle session = null)
+    {
+        Ensure.IsNotNull(document, nameof(document));
+        Ensure.IsNotEmpty(document.Id, nameof(document.Id));
+
+        ReplaceOneResult result;
+
+        if (session == null)
+        {
+            result = await MongoCollection.ReplaceOneAsync(x => x.Id == document.Id, document, new ReplaceOptions
+            {
+                IsUpsert = false
+            }).ConfigureAwait(false);
+        }
+        else
+        {
+            result = await MongoCollection.ReplaceOneAsync(session, x => x.Id == document.Id, document,
+                new ReplaceOptions
+                {
+                    IsUpsert = false
+                }).ConfigureAwait(false);
+        }
+
+        return result.IsAcknowledged;
+    }
+
+    public async Task<bool> ReplaceManyAsync(IEnumerable<TDocument> documents, IClientSessionHandle session = null)
+    {
+        IEnumerable<TDocument> baseDocuments = documents as TDocument[] ?? documents.ToArray();
+
+        Ensure.IsNotNull(baseDocuments, nameof(documents));
+
+        List<ReplaceOneModel<TDocument>> replaceModels = new();
+
+        foreach (TDocument document in baseDocuments)
+        {
+            FilterDefinition<TDocument> filter =
+                Builders<TDocument>.Filter.Eq(r => r.Id, document.Id)
+                & Builders<TDocument>.Filter.Eq(r => r.Timestamp, document.Timestamp);
+
+            document.Timestamp = DateTimeOffset.UtcNow.Ticks;
+
+            ReplaceOneModel<TDocument> replaceModel = new ReplaceOneModel<TDocument>(
+                filter,
+                document
+            )
+            {
+                IsUpsert = false
+            };
+
+            replaceModels.Add(replaceModel);
+        }
+
+        BulkWriteResult<TDocument> result;
+
+        if (session == null)
+        {
+            result = await MongoCollection.BulkWriteAsync(replaceModels).ConfigureAwait(false);
+        }
+        else
+        {
+            result = await MongoCollection.BulkWriteAsync(session, replaceModels).ConfigureAwait(false);
+        }
+
+        return result.ModifiedCount == replaceModels.Count;
+    }
+
+    public async Task<bool> ReplaceOneUpsertAsync(Expression<Func<TDocument, bool>> query, TDocument document,
+        IClientSessionHandle session = null)
+    {
+        Ensure.IsNotNull(query, nameof(query));
+        Ensure.IsNotNull(document, nameof(document));
+        //if the id is empty, we will upsert the document
+        document.Id = (document.Id == Guid.Empty) ? Guid.NewGuid() : document.Id;
+
+        ReplaceOneResult result;
+
+        if (session == null)
+        {
+            result = await MongoCollection.ReplaceOneAsync<TDocument>(query, document, new ReplaceOptions
+            {
+                IsUpsert = true
+            }).ConfigureAwait(false);
+        }
+        else
+        {
+            result = await MongoCollection.ReplaceOneAsync<TDocument>(session, query, document, new ReplaceOptions
+            {
+                IsUpsert = true
+            }).ConfigureAwait(false);
+        }
+
+        return result.IsAcknowledged;
+    }
+
+    public async Task<bool> ReplaceOneUpsertAsync(TDocument document, IClientSessionHandle session = null)
+    {
+        Ensure.IsNotNull(document, nameof(document));
+
+        //if the id is empty, we will upsert the document
+        document.Id = (document.Id == Guid.Empty) ? Guid.NewGuid() : document.Id;
+        ReplaceOneResult result;
+
+        if (session == null)
+        {
+            result = await MongoCollection.ReplaceOneAsync(x => x.Id == document.Id, document, new ReplaceOptions
+            {
+                IsUpsert = true
+            }).ConfigureAwait(false);
+        }
+        else
+        {
+            result = await MongoCollection.ReplaceOneAsync(session, x => x.Id == document.Id, document,
+                new ReplaceOptions
+                {
+                    IsUpsert = true
+                }).ConfigureAwait(false);
+        }
+
+        return result.IsAcknowledged;
+    }
+
+    public async Task<TDocument> SingleOrDefaultAsync(Expression<Func<TDocument, bool>> filter,
+        IClientSessionHandle session = null)
+    {
+        Ensure.IsNotNull(filter, nameof(filter));
+
+        return (session == null)
+            ? await (await MongoCollection
+                .FindAsync(filter, new FindOptions<TDocument> { Limit = 1 })
+                .ConfigureAwait(false)).SingleOrDefaultAsync().ConfigureAwait(false)
+            : await (await MongoCollection
+                .FindAsync(session, filter, new FindOptions<TDocument> { Limit = 1 })
+                .ConfigureAwait(false)).SingleOrDefaultAsync().ConfigureAwait(false);
+    }
+
+    public async Task<TDocument> SingleOrDefaultAsync(FilterDefinition<TDocument> filter,
+        IClientSessionHandle session = null)
+    {
+        Ensure.IsNotNull(filter, nameof(filter));
+
+        return (session == null)
+            ? await (await MongoCollection.FindAsync(filter, new FindOptions<TDocument> { Limit = 1 })
+                    .ConfigureAwait(false))
+                .SingleOrDefaultAsync()
+                .ConfigureAwait(false)
+            : await (await MongoCollection
+                .FindAsync(session, filter, new FindOptions<TDocument> { Limit = 1 })
+                .ConfigureAwait(false)).SingleOrDefaultAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Performs multiple updates on multiple documents using a documentUpdateComposer.
+    /// </summary>
+    public Task UpdateManyAsync(Expression<Func<TDocument, bool>> filter, UpdateDefinition<TDocument> update,
+        IClientSessionHandle session = null)
+    {
+        Ensure.IsNotNull(filter, nameof(filter));
+        Ensure.IsNotNull(update, nameof(update));
+
+        return session == null
+            ? MongoCollection.UpdateManyAsync(filter, update, new UpdateOptions { IsUpsert = false })
+            : MongoCollection.UpdateManyAsync(session, filter, update, new UpdateOptions { IsUpsert = false });
+    }
+
+    /// <summary>
+    /// Performs multiple updates on multiple documents using a documentUpdateComposer.
+    /// </summary>
+    public Task UpdateManyAsync<TField>(Expression<Func<TDocument, bool>> filter,
+        Expression<Func<TDocument, TField>> field, TField fieldValue, IClientSessionHandle session = null)
+    {
+        Ensure.IsNotNull(filter, nameof(filter));
+        Ensure.IsNotNull(field, nameof(field));
+
+        //update def
+        UpdateDefinition<TDocument> update = Builders<TDocument>.Update.Set(field, fieldValue);
+
+        return session == null
+            ? MongoCollection.UpdateManyAsync(filter, update, new UpdateOptions { IsUpsert = false })
+            : MongoCollection.UpdateManyAsync(session, filter, update, new UpdateOptions { IsUpsert = false });
+    }
+
+    /// <summary>
+    /// Performs multiple updates on multiple documents using a documentUpdateComposer.
+    /// </summary>
+    public Task UpdateManyAsync<TField>(List<Guid> documentIds, Expression<Func<TDocument, TField>> field,
+        TField fieldValue, IClientSessionHandle session = null)
+    {
+        Ensure.IsNotNull(documentIds, nameof(documentIds));
+        Ensure.IsNotNull(field, nameof(field));
+
+        //update def
+        UpdateDefinition<TDocument> update = Builders<TDocument>.Update.Set(field, fieldValue);
+
+        FilterDefinition<TDocument> filter = Builders<TDocument>.Filter.In(x => x.Id, documentIds);
+
+        return session == null
+            ? MongoCollection.UpdateManyAsync(filter, update, new UpdateOptions { IsUpsert = false })
+            : MongoCollection.UpdateManyAsync(session, filter, update, new UpdateOptions { IsUpsert = false });
+    }
+
+    public Task UpdateManyAsync(List<Guid> documentIds, UpdateDefinition<TDocument> update,
+        IClientSessionHandle session = null)
+    {
+        Ensure.IsNotNull(documentIds, nameof(documentIds));
+        Ensure.IsNotNull(update, nameof(update));
+
+        //update def
+        FilterDefinition<TDocument> filter = Builders<TDocument>.Filter.In(x => x.Id, documentIds);
+
+        return session == null
+            ? MongoCollection.UpdateManyAsync(filter, update, new UpdateOptions { IsUpsert = false })
+            : MongoCollection.UpdateManyAsync(session, filter, update, new UpdateOptions { IsUpsert = false });
+    }
+
+    /// <summary>
+    /// Perform multiple updates on multiple documents using an updateBuilder. The Composer is passed in an expression to make it easier to perform
+    /// lanba operations
+    /// </summary>
+    public Task UpdateManyAsync(FilterDefinition<TDocument> filter, UpdateDefinition<TDocument> update,
+        IClientSessionHandle session = null)
+    {
+        Ensure.IsNotNull(filter, nameof(filter));
+        Ensure.IsNotNull(update, nameof(update));
+        //update
+        return session == null
+            ? MongoCollection.UpdateManyAsync(filter, update, new UpdateOptions { IsUpsert = false })
+            : MongoCollection.UpdateManyAsync(session, filter, update, new UpdateOptions { IsUpsert = false });
+    }
+
+    public Task UpdateManyAsync<TField>(FilterDefinition<TDocument> filter, Expression<Func<TDocument, TField>> field,
+        TField fieldValue, IClientSessionHandle session = null)
+    {
+        Ensure.IsNotNull(filter, nameof(filter));
+        Ensure.IsNotNull(field, nameof(field));
+
+        //update def
+        UpdateDefinition<TDocument> update = Builders<TDocument>.Update.Set(field, fieldValue);
+        //update
+        return session == null
+            ? MongoCollection.UpdateManyAsync(filter, update, new UpdateOptions { IsUpsert = false })
+            : MongoCollection.UpdateManyAsync(session, filter, update, new UpdateOptions { IsUpsert = false });
+    }
+
+    /// <summary>
+    /// Updates one field over one document using the documentId to identify it.
+    /// </summary>
+    public Task UpdateOneAsync<TField>(Guid documentId, Expression<Func<TDocument, TField>> field, TField fieldValue,
+        IClientSessionHandle session = null)
+    {
+        Ensure.IsNotNull(field, nameof(field));
+
+        UpdateDefinition<TDocument> update = Builders<TDocument>.Update.Set(field, fieldValue);
+
+        return session == null
+            ? MongoCollection.UpdateOneAsync(x => x.Id == documentId, update,
+                new UpdateOptions
+                {
+                    IsUpsert = false
+                })
+            : MongoCollection.UpdateOneAsync(session, x => x.Id == documentId, update,
+                new UpdateOptions
+                {
+                    IsUpsert = false
+                });
+    }
+
+    /// <summary>
+    /// Performs multiple updates on document using a documentUpdateComposer.
+    /// </summary>
+    public Task UpdateOneAsync(Guid documentId, UpdateDefinition<TDocument> update, IClientSessionHandle session = null)
+    {
+        Ensure.IsNotNull(update, nameof(update));
+
+        return session == null
+            ? MongoCollection.UpdateOneAsync(x => x.Id == documentId, update, new UpdateOptions { IsUpsert = false })
+            : MongoCollection.UpdateOneAsync(session, x => x.Id == documentId, update,
+                new UpdateOptions { IsUpsert = false });
+    }
+
+    public Task UpdateOneAsync(Guid documentId,
+        Func<UpdateDefinitionBuilder<TDocument>, UpdateDefinition<TDocument>> updateOps,
+        IClientSessionHandle session = null)
+    {
+        Ensure.IsNotNull(updateOps, nameof(updateOps));
+
+        var update = updateOps(new UpdateDefinitionBuilder<TDocument>());
+
+        return session == null
+            ? MongoCollection.UpdateOneAsync(x => x.Id == documentId, update, new UpdateOptions { IsUpsert = false })
+            : MongoCollection.UpdateOneAsync(session, x => x.Id == documentId, update,
+                new UpdateOptions { IsUpsert = false });
+    }
+
+    public Task UpdateOneAsync<T>(Guid documentId, string field, T value, IClientSessionHandle session = null)
+    {
+        Ensure.IsNotNull(field, nameof(field));
+
+        FieldDefinition<TDocument, T> fieldDefinition = new StringFieldDefinition<TDocument, T>(field);
+
+        UpdateOptions options = new UpdateOptions
+        {
+            IsUpsert = false
+        };
+
+        if (session == null)
+        {
+            return MongoCollection.UpdateOneAsync(x => x.Id == documentId,
+                Builders<TDocument>.Update.Set(fieldDefinition, value), options);
+        }
+        else
+        {
+            return MongoCollection.UpdateOneAsync(session, x => x.Id == documentId,
+                Builders<TDocument>.Update.Set(fieldDefinition, value), options);
+        }
+    }
+
+    public Task UpdateFirstOrNoneAsync(Expression<Func<TDocument, bool>> filter,
+        UpdateDefinition<TDocument> updateComposer, IClientSessionHandle session = null)
+    {
+        Ensure.IsNotNull(filter, nameof(filter));
+        Ensure.IsNotNull(updateComposer, nameof(updateComposer));
+
+        return session == null
+            ? MongoCollection.UpdateOneAsync(filter, updateComposer, new UpdateOptions { IsUpsert = false })
+            : MongoCollection.UpdateOneAsync(session, filter, updateComposer, new UpdateOptions { IsUpsert = false });
+    }
+
+    public Task UpdateFirstOrNoneAsync<TField>(Expression<Func<TDocument, bool>> filter, string field, TField value,
+        IClientSessionHandle session = null)
+    {
+        Ensure.IsNotNull(filter, nameof(filter));
+        Ensure.IsNotNull(field, nameof(field));
+
+        FieldDefinition<TDocument, TField> fieldDefinition = new StringFieldDefinition<TDocument, TField>(field);
+
+        return session == null
+            ? MongoCollection.UpdateOneAsync(filter, Builders<TDocument>.Update.Set(fieldDefinition, value),
+                new UpdateOptions { IsUpsert = false })
+            : MongoCollection.UpdateOneAsync(session, filter, Builders<TDocument>.Update.Set(fieldDefinition, value),
+                new UpdateOptions { IsUpsert = false });
+    }
+}
