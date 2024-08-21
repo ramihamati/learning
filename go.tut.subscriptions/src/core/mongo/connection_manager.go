@@ -3,8 +3,12 @@ package mongo
 import (
 	"context"
 	"fmt"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readconcern"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"strings"
 	"subscriptions/core/errors"
 	"subscriptions/core/helpers"
@@ -16,15 +20,16 @@ const (
 )
 
 type ConnectionManager struct {
-	Client *mongo.Client
+	Client  *mongo.Client
+	Context context.Context
 }
 
 func NewManager(setting ConnectionSettings) ConnectionManager {
-	con := context.TODO()
-	context.WithTimeout(con, time.Second*30)
+	var _context = context.TODO()
+	context.WithTimeout(_context, time.Second*30)
 
 	client, err := mongo.Connect(
-		con,
+		_context,
 		options.Client().ApplyURI(getConnectionString(setting)))
 
 	if err != nil {
@@ -35,8 +40,46 @@ func NewManager(setting ConnectionSettings) ConnectionManager {
 	}
 
 	return ConnectionManager{
-		Client: client,
+		Client:  client,
+		Context: _context,
 	}
+}
+
+func (c ConnectionManager) GetCollection(collectionName string, databaseName string) {
+	var collectionOptions = &options.CollectionOptions{
+		ReadConcern: &readconcern.ReadConcern{
+			Level: "majority",
+		},
+		WriteConcern: &writeconcern.WriteConcern{
+			W: "majority",
+		},
+		ReadPreference: readpref.PrimaryPreferred(),
+	}
+	c.Client.
+		Database(databaseName).
+		Collection(collectionName, collectionOptions)
+}
+
+func (c ConnectionManager) GetDatabase(databaseName string) {
+	c.Client.Database(databaseName)
+}
+
+func (c ConnectionManager) HasCollection(collectionName string, databaseName string) (bool, error) {
+	var database = c.Client.Database(databaseName)
+	var options = &options.ListCollectionsOptions{}
+
+	collections, err := database.ListCollectionNames(c.Context, bson.D{}, options)
+
+	if err != nil {
+		return false, err
+	}
+
+	for _, a := range collections {
+		if a == collectionName {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func getConnectionString(settings ConnectionSettings) string {

@@ -10,10 +10,10 @@ func main() {
 	defer error_capture.CaptureDefer()
 
 	settings := mongo.
-		NewSettings("mongodb://localhost:27017").
+		NewConnectionSettings("mongodb://localhost:27017").
 		WithTimeout(time.Second * 10)
 
-	manager := mongo.NewManager(settings)
+	_ = mongo.NewManager(settings)
 
 	//client, err := mongo.Connect(
 	//	context.TODO(),
