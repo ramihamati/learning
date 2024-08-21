@@ -8,7 +8,7 @@ type ConnectionSettingsProviderImpl struct {
 	_connectionSettings ConnectionSettings
 }
 
-func New(_connectionSettings ConnectionSettings) *ConnectionSettingsProviderImpl {
+func NewConnectionSettingsProvider(_connectionSettings ConnectionSettings) *ConnectionSettingsProviderImpl {
 	return &ConnectionSettingsProviderImpl{
 		_connectionSettings: _connectionSettings,
 	}
