@@ -1,3 +1,4 @@
+use bincode::Encode;
 use chrono::{Utc, DateTime};
 use sha2::{Sha256, Digest};
 use data_encoding::HEXLOWER;
@@ -12,7 +13,7 @@ pub struct Block {
     pub hash : String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Encode)]
 pub struct BlockHashContent {
     pub index : u64,
     pub timestamp : i64,
