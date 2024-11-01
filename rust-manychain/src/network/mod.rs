@@ -22,11 +22,14 @@ pub struct RPC{
 }
 pub trait Transport<T : Transport<T> + Send + Sync>{
     async fn connect(&mut self, transport: Box<T>);
-    async fn subscribe(&mut self,  transport: Box<T>);
-    fn send_message(self, addr: NetAddr, payload: Vec<u8>);
+    async fn start(&mut self);
+    async fn broadcast(self, payload: Vec<u8>);
+    async fn send_message(self, addr: NetAddr, payload: Vec<u8>);
     fn addr(self) -> Box<NetAddr>;
 }
+pub struct MyError{
 
+}
 pub struct LocalTransport{
     addr : NetAddr,
     consume: mpsc::Receiver<RPC>,
@@ -55,9 +58,9 @@ impl Transport<LocalTransport> for LocalTransport{
         self.peers.insert(transport.addr.clone(),  transport);
     }
 
-    async fn subscribe(&mut self, mut transport: Box<LocalTransport>){
+    async fn start(&mut self){
         loop {
-            match transport.consume.recv().await {
+            match self.consume.recv().await {
                 Some(_) => println!("Received"),
                 None => {
                     println!("Channel closed, exiting loop.");
@@ -67,8 +70,22 @@ impl Transport<LocalTransport> for LocalTransport{
         }
     }
 
-    fn send_message(self, addr: NetAddr, payload: Vec<u8>) {
-        todo!()
+  async  fn broadcast(self, payload: Vec<u8>) {
+        for peer in self.peers {
+            peer.1.produce.send(RPC {
+                from: self.addr.clone(),
+                payload: payload.clone()
+            }).await.expect("TODO: panic message");
+        }
+    }
+
+   async fn send_message(self, addr: NetAddr, payload: Vec<u8>){
+
+        let peer = self.peers.get(&addr).unwrap();
+        peer.produce.send(RPC{
+            from: self.addr.clone(),
+            payload: payload.clone()
+        }).await.expect("failed to send message");
     }
 
     fn addr(self) -> Box<NetAddr> {
