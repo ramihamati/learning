@@ -1,15 +1,17 @@
 mod rpc;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::hash::{Hash, Hasher};
+use std::ops::Deref;
 use std::sync::Arc;
 use tokio::sync::{mpsc, RwLock};
 use tokio::sync::mpsc::Receiver;
 use std::thread;
+
 #[derive(Debug, Eq, Hash, PartialEq)]
 pub struct  NetAddr {
     addr: String,
 }
-
 impl NetAddr {
     fn clone(&self) -> Self {
         return self.clone();
@@ -20,6 +22,78 @@ pub struct RPC{
     from : NetAddr,
     payload : Vec<u8>
 }
+pub struct ConnectedPeer<T: Transport<T> + Send + Sync>{
+    addr: NetAddr,
+    peer: Arc<Peer<T>>,
+    produce: mpsc::Sender<RPC>,
+}
+impl<T: Transport<T> + Send + Sync> Hash for ConnectedPeer<T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.addr.hash(state);
+    }
+}
+
+impl<T: Transport<T> + Send + Sync> Eq for ConnectedPeer<T> {
+
+}
+impl<T: Transport<T> + Send + Sync> PartialEq for ConnectedPeer<T> {
+    fn eq(&self, other: &Self) -> bool {
+        return self.addr == other.addr;
+    }
+}
+pub struct Peer<T : Transport<T> + Send + Sync> {
+    addr: NetAddr,
+    lock : RwLock<()>,
+    peers: HashSet<Box<ConnectedPeer<T>>>,
+}
+
+impl<T : Transport<T> + Send + Sync> Peer<T>{
+    async fn connect(&mut self, peer: Arc<Peer<T>>){
+        // self.lock.write().await;
+        let (tx, mut rx) = mpsc::channel::<RPC>(1024);
+        let cloned_addr : NetAddr = peer.addr().clone();
+        let  connection =  ConnectedPeer{
+            produce: tx,
+            peer: peer,
+            addr : cloned_addr,
+        };
+
+        self.peers.insert(Box::new(connection));
+
+        loop {
+            match rx.recv().await {
+                Some(_) => println!("Received"),
+                None => {
+                    println!("Channel closed, exiting loop.");
+                    break;
+                }
+            }
+        }
+    }
+
+    async fn broadcast(self, payload: Vec<u8>){
+        for peer in self.peers {
+            peer.produce.send(RPC {
+                from: self.addr.clone(),
+                payload: payload.clone()
+            }).await.expect("TODO: panic message");
+        }
+    }
+    async fn send_message(self, addr: NetAddr, payload: Vec<u8>){
+        for peer in self.peers {
+            if (peer.addr == addr){
+                peer.produce.send(RPC{
+                    from: self.addr.clone(),
+                    payload: payload.clone()
+                }).await.expect("failed to send message");
+            }
+        }
+    }
+    fn addr(&self) -> NetAddr{
+        self.addr.clone()
+    }
+}
+
 pub trait Transport<T : Transport<T> + Send + Sync>{
     async fn connect(&mut self, transport: Box<T>);
     async fn start(&mut self);
