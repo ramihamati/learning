@@ -1,4 +1,6 @@
 mod block;
+mod network;
+
 use {
     sha2::{Digest, Sha256},
     std::fmt,
