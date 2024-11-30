@@ -4,15 +4,15 @@ use crate::lexer::{TokenMatcher};
 use crate::lexer::matchers::token_matcher_helper::TokenMatcherHelper;
 use crate::lexer::TokenType;
 
-pub struct TokenMatcherGreater {
+pub struct TokenMatcherLess {
 }
 
-impl<'a> TokenMatcher<'a> for TokenMatcherGreater {
+impl<'a> TokenMatcher<'a> for TokenMatcherLess   {
     fn create(&self, reader: &mut InputReader) -> Option<Token> {
         TokenMatcherHelper::match_symbol(
             reader,
-            ">",
-            TokenType::Greater,
+            "<",
+            TokenType::Less
         )
     }
 }

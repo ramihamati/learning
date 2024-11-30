@@ -9,6 +9,9 @@ pub struct TokenMatcherDot {
 
 impl<'a> TokenMatcher<'a> for TokenMatcherDot {
     fn create(&self, reader: &mut InputReader) -> Option<Token> {
-        TokenMatcherHelper::match_character(reader, '.', TokenType::Comma)
+        TokenMatcherHelper::match_character(
+            reader,
+            '.',
+            TokenType::Dot)
     }
 }
