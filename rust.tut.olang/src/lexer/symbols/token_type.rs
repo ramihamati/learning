@@ -32,8 +32,8 @@ pub enum TokenType {
     OpenBrace,      // (OK) {
     CloseBrace,     // (OK) }
     SemiColon,      // (OK) ;
-    Comma,          //,
-    Dot,            // .
+    Comma,          // (OK) ,
+    Dot,            // (OK) .
     AmpAmp,         // (OK) &&
     PipePipe,       // (OK) ||
 
