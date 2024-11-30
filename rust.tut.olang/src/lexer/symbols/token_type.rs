@@ -12,11 +12,11 @@ pub enum TokenType {
     Else,           // (OK) else
     Loop,           // (OK) while
     Struct,         // (OK) struct
-    Func,           // fn (OK)
-    Return,         // return (OK)
-    This,           // self, (OK)
-    True,           // true,
-    False,          // false
+    Func,           // (OK) fn
+    Return,         // (OK) return
+    This,           // (OK) self
+    True,           // (OK) true,
+    False,          // (OK) false
     Var,            // (OK) var
     Continue,       // (OK) continue
     Break,          // (OK) break

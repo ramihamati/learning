@@ -1,4 +1,4 @@
-use crate::lexer::{InputReader, TokenLinePosition, TokenLocalisation, TokenMatcherAmpAmp, TokenMatcherBreak, TokenMatcherLeftFlow, TokenMatcherPrivate, TokenMatcherRightFlow};
+use crate::lexer::{InputReader, TokenLinePosition, TokenLocalisation, TokenMatcherAmpAmp, TokenMatcherBreak, TokenMatcherFalse, TokenMatcherLeftFlow, TokenMatcherPrivate, TokenMatcherRightFlow, TokenMatcherTrue};
 use crate::lexer::{TokenMatcherDot, TokenMatcherGreater, TokenMatcherLess, TokenMatcherPublic};
 use crate::lexer::{TokenMatcherPipePipe, TokenState, TokenMatcherCloseBrace};
 use crate::lexer::{TokenMatcherContinue, TokenMatcherCommentLine, TokenMatcherCommentMultiLine, TokenMatcherReturn};
@@ -43,6 +43,8 @@ impl<'a> Lexer<'a> {
         matchers.push(Box::new(TokenMatcherFn {}));
         matchers.push(Box::new(TokenMatcherLeftFlow {}));
         matchers.push(Box::new(TokenMatcherRightFlow {}));
+        matchers.push(Box::new(TokenMatcherTrue {}));
+        matchers.push(Box::new(TokenMatcherFalse {}));
 
         // fixed length single characters
         matchers.push(Box::new(TokenMatcherOpenParen {}));
