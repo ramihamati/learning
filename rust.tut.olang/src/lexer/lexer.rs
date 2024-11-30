@@ -1,5 +1,5 @@
-use crate::lexer::{InputReader, TokenLinePosition, TokenLocalisation, TokenMatcherAmpAmp, TokenMatcherBreak};
-use crate::lexer::{TokenMatcherDot, TokenMatcherGreater, TokenMatcherLess};
+use crate::lexer::{InputReader, TokenLinePosition, TokenLocalisation, TokenMatcherAmpAmp, TokenMatcherBreak, TokenMatcherLeftFlow, TokenMatcherPrivate, TokenMatcherRightFlow};
+use crate::lexer::{TokenMatcherDot, TokenMatcherGreater, TokenMatcherLess, TokenMatcherPublic};
 use crate::lexer::{TokenMatcherPipePipe, TokenState, TokenMatcherCloseBrace};
 use crate::lexer::{TokenMatcherContinue, TokenMatcherCommentLine, TokenMatcherCommentMultiLine, TokenMatcherReturn};
 use crate::lexer::{TokenMatcherCloseParen, TokenMatcherEqual, TokenMatcherStruct, TokenMatcherVar};
@@ -41,6 +41,8 @@ impl<'a> Lexer<'a> {
         matchers.push(Box::new(TokenMatcherCommentMultiLine {}));
         matchers.push(Box::new(TokenMatcherBangEqual {}));
         matchers.push(Box::new(TokenMatcherFn {}));
+        matchers.push(Box::new(TokenMatcherLeftFlow {}));
+        matchers.push(Box::new(TokenMatcherRightFlow {}));
 
         // fixed length single characters
         matchers.push(Box::new(TokenMatcherOpenParen {}));
@@ -70,6 +72,8 @@ impl<'a> Lexer<'a> {
         matchers.push(Box::new(TokenMatcherBreak {}));
         matchers.push(Box::new(TokenMatcherReturn {}));
         matchers.push(Box::new(TokenMatcherThis {}));
+        matchers.push(Box::new(TokenMatcherPublic {}));
+        matchers.push(Box::new(TokenMatcherPrivate {}));
 
         Lexer {
             tokens: vec![],

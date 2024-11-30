@@ -20,8 +20,10 @@ pub enum TokenType {
     Var,            // (OK) var
     Continue,       // (OK) continue
     Break,          // (OK) break
-    Public,         // public
-    LeftAssign,     // <-
+    Public,         // (OK) public
+    Private,        // (OK) private
+    LeftFlow,       // (OK) <-
+    RightFlow,      // (OK) ->
     // other
     Plus,           // (OK) +
     Minus,          // (OK) -
@@ -41,12 +43,12 @@ pub enum TokenType {
     BangEqual,          // (OK) !=
     EqualEqual,         // (OK) ==
     Equal,              // (OK) =
-    Greater,            // >
+    Greater,            // (OK) >
     GreaterEqual,       // (OK) >=
-    Less,               // <
+    Less,               // (OK) <
     LessEqual,          // (OK) <=
     CommentSingleLine,  // (OK) //
-    CommentMultiLine,   // /* */
+    CommentMultiLine,   // (OK) /* */
     EOF,
     Illegal,
 }

@@ -33,6 +33,10 @@ pub mod token_matcher_forward_slash;
 pub mod token_matcher_dot;
 pub mod token_matcher_greater;
 pub mod token_matcher_less;
+pub mod token_matcher_public;
+pub mod token_matcher_private;
+pub mod token_matcher_left_flow;
+pub mod token_matcher_right_flow;
 
 pub use crate::lexer::token_matcher_open_paren::*;
 pub use crate::lexer::token_matcher_close_paren::*;
@@ -69,3 +73,7 @@ pub use crate::lexer::token_matcher_forward_slash::*;
 pub use crate::lexer::token_matcher_dot::*;
 pub use crate::lexer::token_matcher_greater::*;
 pub use crate::lexer::token_matcher_less::*;
+pub use crate::lexer::token_matcher_public::*;
+pub use crate::lexer::token_matcher_private::*;
+pub use crate::lexer::token_matcher_left_flow::*;
+pub use crate::lexer::token_matcher_right_flow::*;
