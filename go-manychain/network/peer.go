@@ -2,36 +2,33 @@ package network
 
 import (
 	"errors"
-	"log"
 	"sync"
 )
 
 type Peer struct {
 	lock           sync.RWMutex
-	Address        NetAddr
-	Transport      ITransport
+	Address        NetworkAddress
 	connectedPeers []*RemotePeer
 }
 
-func NewPeer(address NetAddr, transport ITransport) *Peer {
+func NewPeer(address NetworkAddress) *Peer {
 	peer := &Peer{
 		lock:           sync.RWMutex{},
 		connectedPeers: make([]*RemotePeer, 0),
 		Address:        address,
-		Transport:      transport,
 	}
 
-	transport.Receive(func(rpc RPC) {
-		log.Printf("Peer {%s} - Received {%s}\n", address.Value, rpc)
-	})
+	//transport.Receive(func(rpc RPC) {
+	//	log.Printf("Peer {%s} - Received {%s}\n", address.Value, rpc)
+	//})
 
 	return peer
 }
 
-func (p *Peer) RegisterPeer(address NetAddr, transport ITransport) *RemotePeer {
+func (p *Peer) RegisterPeer(node INetworkNode, transport INetworkTransport) *RemotePeer {
 	p.lock.Lock()
 	remotePeer := &RemotePeer{
-		Address:   address,
+		Node:      node,
 		Transport: transport,
 	}
 	p.connectedPeers = append(p.connectedPeers, remotePeer)
@@ -41,9 +38,10 @@ func (p *Peer) RegisterPeer(address NetAddr, transport ITransport) *RemotePeer {
 
 func (p *Peer) Send(peer *RemotePeer, payload RPC) error {
 
+	// sending only if it's a known and registered peer
 	for i := range p.connectedPeers {
-		if p.connectedPeers[i].Address.Equals(peer.Address) {
-			p.connectedPeers[i].Transport.Send(payload)
+		if p.connectedPeers[i].Node.Addr().Equals(peer.Node.Addr()) {
+			p.connectedPeers[i].Transport.Send(p.connectedPeers[i].Node, payload)
 			return nil
 		}
 	}
@@ -52,6 +50,6 @@ func (p *Peer) Send(peer *RemotePeer, payload RPC) error {
 
 func (p *Peer) Broadcast(payload RPC) {
 	for i := range p.connectedPeers {
-		p.connectedPeers[i].Transport.Send(payload)
+		p.connectedPeers[i].Transport.Send(p.connectedPeers[i].Node, payload)
 	}
 }

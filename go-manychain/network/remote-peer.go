@@ -1,13 +1,13 @@
 package network
 
 type RemotePeer struct {
-	Address   NetAddr
-	Transport ITransport
+	Node      INetworkNode
+	Transport INetworkTransport
 }
 
-func NewRemotePeer(transport ITransport, address NetAddr) *RemotePeer {
+func NewRemotePeer(transport INetworkTransport, node INetworkNode) *RemotePeer {
 	return &RemotePeer{
 		Transport: transport,
-		Address:   address,
+		Node:      node,
 	}
 }
