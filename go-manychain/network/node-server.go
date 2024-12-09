@@ -5,38 +5,31 @@ import (
 	"sync"
 )
 
-type Peer struct {
+type NodeServer struct {
 	lock           sync.RWMutex
 	Address        NetworkAddress
-	connectedPeers []*RemotePeer
+	connectedPeers []*NodeRemote
 }
 
-func NewPeer(address NetworkAddress) *Peer {
-	peer := &Peer{
+func NewNodeServer(address NetworkAddress) *NodeServer {
+	peer := &NodeServer{
 		lock:           sync.RWMutex{},
-		connectedPeers: make([]*RemotePeer, 0),
+		connectedPeers: make([]*NodeRemote, 0),
 		Address:        address,
 	}
-
-	//transport.Receive(func(rpc RPC) {
-	//	log.Printf("Peer {%s} - Received {%s}\n", address.Value, rpc)
-	//})
 
 	return peer
 }
 
-func (p *Peer) RegisterPeer(node INetworkNode, transport INetworkTransport) *RemotePeer {
+func (p *NodeServer) AddPeer(node INetworkNode, transport INetworkTransport) *NodeRemote {
 	p.lock.Lock()
-	remotePeer := &RemotePeer{
-		Node:      node,
-		Transport: transport,
-	}
+	remotePeer := NewNodeRemote(transport, node)
 	p.connectedPeers = append(p.connectedPeers, remotePeer)
 	p.lock.Unlock()
 	return remotePeer
 }
 
-func (p *Peer) Send(peer *RemotePeer, payload RPC) error {
+func (p *NodeServer) Send(peer *NodeRemote, payload RPC) error {
 
 	// sending only if it's a known and registered peer
 	for i := range p.connectedPeers {
@@ -48,7 +41,7 @@ func (p *Peer) Send(peer *RemotePeer, payload RPC) error {
 	return errors.New("peer not found")
 }
 
-func (p *Peer) Broadcast(payload RPC) {
+func (p *NodeServer) Broadcast(payload RPC) {
 	for i := range p.connectedPeers {
 		p.connectedPeers[i].Transport.Send(p.connectedPeers[i].Node, payload)
 	}
