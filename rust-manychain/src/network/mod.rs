@@ -1,12 +1,9 @@
 mod rpc;
-
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::sync::Arc;
 use tokio::sync::{mpsc, RwLock};
-use tokio::sync::mpsc::Receiver;
-use std::thread;
 
 #[derive(Debug, Eq, Hash, PartialEq)]
 pub struct  NetAddr {
@@ -19,106 +16,57 @@ impl NetAddr {
 }
 
 pub struct RPC{
-    from : NetAddr,
     payload : Vec<u8>
 }
-pub struct ConnectedPeer<T: Transport<T> + Send + Sync>{
+pub struct ConnectedPeer {
     addr: NetAddr,
-    peer: Arc<Peer<T>>,
-    produce: mpsc::Sender<RPC>,
+    transport: Box<dyn Transport>,
 }
-impl<T: Transport<T> + Send + Sync> Hash for ConnectedPeer<T> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.addr.hash(state);
+
+impl ConnectedPeer {
+    pub fn new(addr: NetAddr, transport: Box<dyn Transport>) -> ConnectedPeer {
+        ConnectedPeer{
+            transport,
+            addr,
+        }
     }
 }
 
-impl<T: Transport<T> + Send + Sync> Eq for ConnectedPeer<T> {
-
-}
-impl<T: Transport<T> + Send + Sync> PartialEq for ConnectedPeer<T> {
-    fn eq(&self, other: &Self) -> bool {
-        return self.addr == other.addr;
-    }
-}
-pub struct Peer<T : Transport<T> + Send + Sync> {
+pub struct Peer {
     addr: NetAddr,
     lock : RwLock<()>,
-    peers: HashSet<Box<ConnectedPeer<T>>>,
+    peers: HashSet<Box<ConnectedPeer>>,
 }
 
-impl<T : Transport<T> + Send + Sync> Peer<T>{
-    async fn connect(&mut self, peer: Arc<Peer<T>>){
-        // self.lock.write().await;
-        let (tx, mut rx) = mpsc::channel::<RPC>(1024);
-        let cloned_addr : NetAddr = peer.addr().clone();
-        let  connection =  ConnectedPeer{
-            produce: tx,
-            peer: peer,
-            addr : cloned_addr,
-        };
-
-        self.peers.insert(Box::new(connection));
-
-        loop {
-            match rx.recv().await {
-                Some(_) => println!("Received"),
-                None => {
-                    println!("Channel closed, exiting loop.");
-                    break;
-                }
-            }
+impl Peer {
+    pub fn new(addr : NetAddr) -> Peer {
+        Peer{
+            lock: RwLock::new(()),
+            peers: HashSet::new(),
+            addr,
         }
     }
-
-    async fn broadcast(self, payload: Vec<u8>){
-        for peer in self.peers {
-            peer.produce.send(RPC {
-                from: self.addr.clone(),
-                payload: payload.clone()
-            }).await.expect("TODO: panic message");
-        }
-    }
-    async fn send_message(self, addr: NetAddr, payload: Vec<u8>){
-        for peer in self.peers {
-            if (peer.addr == addr){
-                peer.produce.send(RPC{
-                    from: self.addr.clone(),
-                    payload: payload.clone()
-                }).await.expect("failed to send message");
-            }
-        }
-    }
-    fn addr(&self) -> NetAddr{
-        self.addr.clone()
+    pub fn add_peer(&mut self, addr: NetAddr, transport: Box<dyn Transport>) {
+        let connected = ConnectedPeer::new(addr, transport);
+        self.peers.insert(Box::new(connected));
     }
 }
 
-pub trait Transport<T : Transport<T> + Send + Sync>{
-    async fn connect(&mut self, transport: Box<T>);
-    async fn start(&mut self);
-    async fn broadcast(self, payload: Vec<u8>);
+pub trait Transport {
     async fn send_message(self, addr: NetAddr, payload: Vec<u8>);
-    fn addr(self) -> Box<NetAddr>;
+    async fn consume(self);
 }
-pub struct MyError{
 
-}
 pub struct LocalTransport{
-    addr : NetAddr,
     consume: mpsc::Receiver<RPC>,
     produce: mpsc::Sender<RPC>,
     lock : RwLock<()>,
-    peers: HashMap<NetAddr, Box<LocalTransport>>,
 }
 
 impl LocalTransport {
     pub fn new(addr: NetAddr) -> LocalTransport  {
         let (tx,  rx) = mpsc::channel::<RPC>(1024);
-
         return LocalTransport{
-            addr,
-            peers: HashMap::new(),
             consume : rx,
             produce : tx,
             lock : RwLock::new(()),
@@ -126,15 +74,16 @@ impl LocalTransport {
     }
 }
 
-impl Transport<LocalTransport> for LocalTransport{
-    async fn connect(&mut self, transport: Box<LocalTransport>)  {
-        self.lock.write().await;
-        self.peers.insert(transport.addr.clone(),  transport);
+impl Transport for LocalTransport{
+   async fn send_message(self, addr: NetAddr, payload: Vec<u8>){
+        self.produce.send(RPC{
+            payload: payload.clone(),
+        }).await.unwrap();
     }
 
-    async fn start(&mut self){
-        loop {
-            match self.consume.recv().await {
+    async fn consume(mut self) {
+        loop{
+            match  self.consume.recv().await {
                 Some(_) => println!("Received"),
                 None => {
                     println!("Channel closed, exiting loop.");
@@ -142,28 +91,6 @@ impl Transport<LocalTransport> for LocalTransport{
                 }
             }
         }
-    }
-
-  async  fn broadcast(self, payload: Vec<u8>) {
-        for peer in self.peers {
-            peer.1.produce.send(RPC {
-                from: self.addr.clone(),
-                payload: payload.clone()
-            }).await.expect("TODO: panic message");
-        }
-    }
-
-   async fn send_message(self, addr: NetAddr, payload: Vec<u8>){
-
-        let peer = self.peers.get(&addr).unwrap();
-        peer.produce.send(RPC{
-            from: self.addr.clone(),
-            payload: payload.clone()
-        }).await.expect("failed to send message");
-    }
-
-    fn addr(self) -> Box<NetAddr> {
-        todo!()
     }
 }
 
