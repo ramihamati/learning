@@ -1,6 +1,7 @@
 package main
 
 import (
+	"awesomeProject/core"
 	"awesomeProject/network"
 	"log"
 	"time"
@@ -10,8 +11,20 @@ func main() {
 	//fmt.Print("test")
 	log.Print("test")
 
-	peer1 := network.NewNodeServer(network.NetworkAddress{Value: "peer1"})
+	TestBlocks()
 
+	//time.Sleep(30 * time.Second)
+}
+
+func TestBlocks() {
+	header := core.NewHeader(0, core.HashFromBytes(make([]byte, 0)), core.Timestamp(0), 0, 1)
+	block := core.NewBlock(header)
+	hash := block.Hash()
+	log.Printf("{%x}", hash)
+}
+
+func TestNetwork() {
+	peer1 := network.NewNodeServer(network.NetworkAddress{Value: "peer1"})
 	transport := network.NewLocalTransport()
 	node1 := network.NewLocalNode("local1")
 	node2 := network.NewLocalNode("local2")
@@ -34,7 +47,6 @@ func main() {
 	peer1.Broadcast(network.RPC{Payload: []byte("hello1")})
 	peer1.Send(rp1, network.RPC{Payload: []byte("hello - direct - 1")})
 	time.Sleep(30 * time.Second)
-	//time.Sleep(30 * time.Second)
 }
 
 // TODO: add a ping between peers
