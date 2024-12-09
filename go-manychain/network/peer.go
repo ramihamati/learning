@@ -2,6 +2,7 @@ package network
 
 import (
 	"errors"
+	"log"
 	"sync"
 )
 
@@ -13,21 +14,29 @@ type Peer struct {
 }
 
 func NewPeer(address NetAddr, transport ITransport) *Peer {
-	return &Peer{
+	peer := &Peer{
 		lock:           sync.RWMutex{},
 		connectedPeers: make([]*RemotePeer, 0),
 		Address:        address,
 		Transport:      transport,
 	}
+
+	transport.Receive(func(rpc RPC) {
+		log.Printf("Peer {%s} - Received {%s}\n", address.Value, rpc)
+	})
+
+	return peer
 }
 
-func (p *Peer) RegisterPeer(address NetAddr, transport ITransport) {
+func (p *Peer) RegisterPeer(address NetAddr, transport ITransport) *RemotePeer {
 	p.lock.Lock()
-	p.connectedPeers = append(p.connectedPeers, &RemotePeer{
+	remotePeer := &RemotePeer{
 		Address:   address,
 		Transport: transport,
-	})
+	}
+	p.connectedPeers = append(p.connectedPeers, remotePeer)
 	p.lock.Unlock()
+	return remotePeer
 }
 
 func (p *Peer) Send(peer *RemotePeer, payload RPC) error {

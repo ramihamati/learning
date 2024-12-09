@@ -2,22 +2,27 @@ package network
 
 type ITransport interface {
 	Send(RPC)
+	Receive(func(rpc RPC))
 }
 
 type LocalTransport struct {
-	Writer ITransportWriter
+	Endpoint INetworkEndpoint
 }
 
 func NewLocalTransport() *LocalTransport {
 	return &LocalTransport{
-		Writer: NewLocalTransportWriter(),
+		Endpoint: NewLocalEndpoint(),
 	}
 }
 
 func (t *LocalTransport) Send(payload RPC) {
-	t.Writer.Write(payload)
+	t.Endpoint.Write(payload)
+}
+
+func (t *LocalTransport) Receive(function func(RPC)) {
+	t.Endpoint.Listen(function)
 }
 
 func (t *LocalTransport) Close() {
-	t.Writer.Close()
+	t.Endpoint.Close()
 }
