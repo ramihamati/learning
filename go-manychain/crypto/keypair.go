@@ -29,7 +29,7 @@ func NewPrivateKey() PrivateKey {
 	}
 }
 
-func GetPublicKey(key PrivateKey) PublicKey {
+func NewPublicKey(key PrivateKey) PublicKey {
 	return PublicKey{
 		key: &key.key.PublicKey,
 	}

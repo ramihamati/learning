@@ -1,10 +1,11 @@
 package core
 
 import (
-	"awesomeProject/crypto"
 	"crypto/sha256"
+	"manychain/crypto"
 )
 
+// TODO: address can be more complex then this I think. It can have smart data, it can be a signed object
 type Address [20]uint8
 
 func (a Address) ToSlice() []byte {

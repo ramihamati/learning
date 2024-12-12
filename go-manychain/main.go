@@ -1,20 +1,27 @@
 package main
 
 import (
-	"awesomeProject/core"
-	"awesomeProject/network"
 	"log"
+	"manychain/core"
+	"manychain/crypto"
+	"manychain/network"
 	"time"
 )
 
 func main() {
 	//fmt.Print("test")
 	log.Print("test")
-
-	TestBlocks()
-	TestBlocks()
+	TestAddress()
 
 	//time.Sleep(30 * time.Second)
+}
+
+func TestAddress() {
+	privateKey := crypto.NewPrivateKey()
+	publicKey := crypto.NewPublicKey(privateKey)
+	address := core.NewAddressFromPublicKey(publicKey)
+	log.Printf("%x", address)
+	log.Printf("%d", len(address))
 }
 
 func TestBlocks() {
