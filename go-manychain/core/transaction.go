@@ -1,6 +1,9 @@
 package core
 
-import "io"
+import (
+	"encoding/binary"
+	"io"
+)
 
 type Transaction interface {
 	EncodeBinary(w io.Writer) error
@@ -18,4 +21,14 @@ func NewBasicTransaction(
 		Timestamp: timestamp,
 		Data:      data,
 	}
+}
+
+func (h *BasicTransaction) EncodeBinary(w io.Writer) error {
+	if err := binary.Write(w, binary.LittleEndian, &h.Timestamp); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.LittleEndian, &h.Data); err != nil {
+		return err
+	}
+	return nil
 }

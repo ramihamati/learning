@@ -12,6 +12,7 @@ func main() {
 	log.Print("test")
 
 	TestBlocks()
+	TestBlocks()
 
 	//time.Sleep(30 * time.Second)
 }

@@ -2,19 +2,7 @@ package core
 
 import (
 	"bytes"
-	"encoding/binary"
-	"io"
 )
-
-func (h *BasicTransaction) EncodeBinary(w io.Writer) error {
-	if err := binary.Write(w, binary.LittleEndian, &h.Timestamp); err != nil {
-		return err
-	}
-	if err := binary.Write(w, binary.LittleEndian, &h.Data); err != nil {
-		return err
-	}
-	return nil
-}
 
 type Block struct {
 	Header       Header
