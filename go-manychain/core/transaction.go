@@ -2,6 +2,7 @@ package core
 
 import (
 	"encoding/binary"
+	"go/types"
 	"io"
 )
 
@@ -9,6 +10,11 @@ import (
 // be stored sepparaetlly
 type Transaction interface {
 	EncodeBinary(w io.Writer) error
+}
+
+type SignedTransaction struct {
+	Transaction Transaction
+	Signature   types.Signature
 }
 
 type BasicTransaction struct {
@@ -19,6 +25,7 @@ type BasicTransaction struct {
 func NewBasicTransaction(
 	timestamp Timestamp,
 	data []byte) *BasicTransaction {
+
 	return &BasicTransaction{
 		Timestamp: timestamp,
 		Data:      data,

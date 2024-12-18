@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"manychain/core"
-	"manychain/crypto"
 	"manychain/network"
 	"time"
 )
@@ -17,11 +16,9 @@ func main() {
 }
 
 func TestAddress() {
-	privateKey := crypto.NewPrivateKey()
-	publicKey := crypto.NewPublicKey(privateKey)
-	address := core.NewAddressFromPublicKey(publicKey)
+	address := core.NewAddress("chain.address.rami")
 	log.Printf("%x", address)
-	log.Printf("%d", len(address))
+	log.Printf("%d", len(address.Value()))
 }
 
 func TestBlocks() {
