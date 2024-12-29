@@ -11,7 +11,6 @@ import (
 type Address struct {
 	value [20]byte
 	name  string
-	test  string // required: because
 }
 
 func (a Address) Value() [20]byte {

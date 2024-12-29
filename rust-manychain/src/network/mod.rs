@@ -2,7 +2,9 @@ mod rpc;
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
+use std::rc::Rc;
 use std::sync::Arc;
+use async_trait::async_trait;
 use tokio::sync::{mpsc, RwLock};
 
 #[derive(Debug, Eq, Hash, PartialEq)]
@@ -51,7 +53,7 @@ impl Peer {
         self.peers.insert(Box::new(connected));
     }
 }
-
+#[async_trait]
 pub trait Transport {
     async fn send_message(self, addr: NetAddr, payload: Vec<u8>);
     async fn consume(self);
