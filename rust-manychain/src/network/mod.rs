@@ -1,14 +1,18 @@
 mod rpc;
-use std::collections::{HashMap, HashSet};
+mod network_endpoint;
+mod network_endpoint_local;
+
+use std::collections::{HashSet};
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
-use std::rc::Rc;
 use std::sync::Arc;
-use async_trait::async_trait;
 use tokio::sync::{mpsc, RwLock};
 
+
+
+
 #[derive(Debug, Eq, Hash, PartialEq)]
-pub struct  NetAddr {
+pub struct NetAddr {
     addr: String,
 }
 impl NetAddr {
@@ -55,6 +59,7 @@ impl<T: Transport> Peer<T> {
     }
 }
 pub trait Transport : Eq +  Hash {
+    type T;
     async fn send_message(self, addr: NetAddr, payload: Vec<u8>);
     async fn consume(self);
 }
@@ -91,7 +96,9 @@ impl Hash for LocalTransport {
 }
 
 impl Transport for LocalTransport{
-   async fn send_message(self, addr: NetAddr, payload: Vec<u8>){
+    type T = LocalTransport;
+
+    async fn send_message(self, addr: NetAddr, payload: Vec<u8>){
         self.produce.send(RPC{
             payload: payload.clone(),
         }).await.unwrap();
