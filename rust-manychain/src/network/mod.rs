@@ -20,13 +20,14 @@ impl NetAddr {
 pub struct RPC{
     payload : Vec<u8>
 }
-pub struct ConnectedPeer {
+#[derive(Eq, Hash, PartialEq)]
+pub struct ConnectedPeer<T : Transport> {
     addr: NetAddr,
-    transport: Box<dyn Transport>,
+    transport: Arc<T>,
 }
 
-impl ConnectedPeer {
-    pub fn new(addr: NetAddr, transport: Box<dyn Transport>) -> ConnectedPeer {
+impl<T: Transport> ConnectedPeer<T> {
+    pub fn new(addr: NetAddr, transport: Arc<T>) -> ConnectedPeer <T>{
         ConnectedPeer{
             transport,
             addr,
@@ -34,27 +35,26 @@ impl ConnectedPeer {
     }
 }
 
-pub struct Peer {
+pub struct Peer<T : Transport> {
     addr: NetAddr,
     lock : RwLock<()>,
-    peers: HashSet<Box<ConnectedPeer>>,
+    peers: HashSet<ConnectedPeer<T>>,
 }
 
-impl Peer {
-    pub fn new(addr : NetAddr) -> Peer {
+impl<T: Transport> Peer<T> {
+    pub fn new(addr : NetAddr) -> Peer<T> {
         Peer{
             lock: RwLock::new(()),
             peers: HashSet::new(),
             addr,
         }
     }
-    pub fn add_peer(&mut self, addr: NetAddr, transport: Box<dyn Transport>) {
+    pub fn add_peer(&mut self, addr: NetAddr, transport: Arc<T>) {
         let connected = ConnectedPeer::new(addr, transport);
-        self.peers.insert(Box::new(connected));
+        self.peers.insert(connected);
     }
 }
-#[async_trait]
-pub trait Transport {
+pub trait Transport : Eq +  Hash {
     async fn send_message(self, addr: NetAddr, payload: Vec<u8>);
     async fn consume(self);
 }
@@ -73,6 +73,20 @@ impl LocalTransport {
             produce : tx,
             lock : RwLock::new(()),
         }
+    }
+}
+
+impl Eq for LocalTransport {}
+
+impl PartialEq<Self> for LocalTransport {
+    fn eq(&self, other: &Self) -> bool {
+        todo!()
+    }
+}
+
+impl Hash for LocalTransport {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        todo!()
     }
 }
 
