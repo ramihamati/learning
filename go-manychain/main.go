@@ -10,9 +10,20 @@ import (
 func main() {
 	//fmt.Print("test")
 	log.Print("test")
-	TestAddress()
 
-	//time.Sleep(30 * time.Second)
+	node := network.NewLocalStream()
+
+	node.Receive(func(rpc network.RPC) {
+		println("{}", rpc.Payload)
+	})
+
+	node.Send(network.RPC{
+		Payload: []byte("test"),
+	})
+	node.Send(network.RPC{
+		Payload: []byte("test"),
+	})
+	time.Sleep(30 * time.Second)
 }
 
 func TestAddress() {
