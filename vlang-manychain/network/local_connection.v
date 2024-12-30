@@ -1,5 +1,6 @@
 module network
 
+@[noinit]
 pub struct LocalConnection implements IConnection {
 pub:
 	endpoint LocalEndpoint
