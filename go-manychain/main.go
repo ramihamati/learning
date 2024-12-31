@@ -10,7 +10,11 @@ import (
 func main() {
 	//fmt.Print("test")
 	log.Print("test")
+	TestNetwork()
+	time.Sleep(30 * time.Second)
+}
 
+func TestStreams() {
 	node := network.NewLocalStream()
 
 	node.Receive(func(rpc network.RPC) {
@@ -23,7 +27,6 @@ func main() {
 	node.Send(network.RPC{
 		Payload: []byte("test"),
 	})
-	time.Sleep(30 * time.Second)
 }
 
 func TestAddress() {
@@ -40,28 +43,30 @@ func TestBlocks() {
 }
 
 func TestNetwork() {
-	peer1 := network.NewNodeServer(network.NetworkAddress{Value: "peer1"})
-	transport := network.NewLocalTransport()
-	node1 := network.NewLocalNode("local1")
-	node2 := network.NewLocalNode("local2")
-	node3 := network.NewLocalNode("local3")
+	serverEp := network.NewLocalEndpoint("localserver")
+	server := network.NewNodeServer(serverEp)
 
-	rp1 := peer1.AddPeer(node1, transport)
-	peer1.AddPeer(node2, transport)
-	peer1.AddPeer(node3, transport)
+	node1 := network.NewLocalConnection(network.NewLocalEndpoint("node1"))
+	node2 := network.NewLocalConnection(network.NewLocalEndpoint("node2"))
+	node3 := network.NewLocalConnection(network.NewLocalEndpoint("node3"))
 
-	transport.Receive(node1, func(rpc network.RPC) {
-		log.Printf("NodeServer {%s} - Received {%s}\n", node1.Addr().Value, rpc)
+	server.AddPeer(node1)
+	server.AddPeer(node2)
+	server.AddPeer(node3)
+
+	node1.Receive(func(rpc network.RPC) {
+		log.Printf("NodeServer {%s} - Received {%s}\n", node1.Name(), rpc)
 	})
-	transport.Receive(node2, func(rpc network.RPC) {
-		log.Printf("NodeServer {%s} - Received {%s}\n", node2.Addr().Value, rpc)
+	node2.Receive(func(rpc network.RPC) {
+		log.Printf("NodeServer {%s} - Received {%s}\n", node2.Name(), rpc)
 	})
-	transport.Receive(node3, func(rpc network.RPC) {
-		log.Printf("NodeServer {%s} - Received {%s}\n", node3.Addr().Value, rpc)
+	node3.Receive(func(rpc network.RPC) {
+		log.Printf("NodeServer {%s} - Received {%s}\n", node3.Name(), rpc)
 	})
 
-	peer1.Broadcast(network.RPC{Payload: []byte("hello1")})
-	peer1.Send(rp1, network.RPC{Payload: []byte("hello - direct - 1")})
+	server.Broadcast(network.RPC{Payload: []byte("hello1")})
+	server.Broadcast(network.RPC{Payload: []byte("hello2")})
+	//server.Send(rp1, network.RPC{Payload: []byte("hello - direct - 1")})
 	time.Sleep(30 * time.Second)
 }
 

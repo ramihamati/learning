@@ -6,45 +6,61 @@ import (
 )
 
 type Header struct {
-	Version   uint32
-	PrevHash  Hash
-	Timestamp Timestamp
-	Height    uint32
-	Nonce     uint64
+	version   uint32
+	prevHash  Hash
+	timestamp Timestamp
+	height    uint32
+	nonce     uint64
 }
 
-func NewHeader(version uint32, prevHash Hash, timestamp Timestamp, height uint32, noonce uint64) Header {
+func (h *Header) Version() uint32 {
+	return h.version
+}
+func (h *Header) PrevHash() Hash {
+	return h.prevHash
+}
+func (h *Header) Timestamp() Timestamp {
+	return h.timestamp
+}
+func (h *Header) Nonce() uint64 {
+	return h.nonce
+}
+func (h *Header) Height() uint32 {
+	return h.height
+}
+
+func NewHeader(version uint32, prevHash Hash, timestamp Timestamp, height uint32, noOnce uint64) Header {
 	return Header{
-		Version:   version,
-		PrevHash:  prevHash,
-		Timestamp: timestamp,
-		Height:    height,
-		Nonce:     noonce,
+		version:   version,
+		prevHash:  prevHash,
+		timestamp: timestamp,
+		height:    height,
+		nonce:     noOnce,
 	}
 }
 
 func (h *Header) Clone() Header {
 	return Header{
-		Version:   h.Version,
-		PrevHash:  h.PrevHash,
-		Timestamp: h.Timestamp,
-		Height:    h.Height,
-		Nonce:     h.Nonce,
+		version:   h.version,
+		prevHash:  h.prevHash,
+		timestamp: h.timestamp,
+		height:    h.height,
+		nonce:     h.nonce,
 	}
 }
 
 func (h *Header) EncodeBinary(w io.Writer) error {
-	if err := binary.Write(w, binary.LittleEndian, &h.Version); err != nil {
+	if err := binary.Write(w, binary.LittleEndian, &h.version); err != nil {
 		return err
 	}
-	if err := binary.Write(w, binary.LittleEndian, &h.PrevHash); err != nil {
+	if err := binary.Write(w, binary.LittleEndian, &h.prevHash); err != nil {
 		return err
 	}
-	if err := binary.Write(w, binary.LittleEndian, &h.Timestamp); err != nil {
+	if err := binary.Write(w, binary.LittleEndian, &h.timestamp); err != nil {
 		return err
 	}
-	if err := binary.Write(w, binary.LittleEndian, &h.Height); err != nil {
+	if err := binary.Write(w, binary.LittleEndian, &h.height); err != nil {
 		return err
 	}
-	return binary.Write(w, binary.LittleEndian, &h.Nonce)
+	return binary.Write(w, binary.LittleEndian, &h.nonce)
 }

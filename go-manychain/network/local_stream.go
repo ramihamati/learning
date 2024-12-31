@@ -2,25 +2,18 @@ package network
 
 import "time"
 
-type IConnection interface {
-	Send(RPC)
-	Receive(func(rpc RPC))
-}
-
-type IStream interface {
-	Send(RPC)
-	Receive(func(rpc RPC))
-}
-
+// LocalStream implements IStream
 type LocalStream struct {
 	channel  chan RPC
 	isClosed bool
 }
 
+// Send is an implementation for IStream
 func (t *LocalStream) Send(payload RPC) {
 	t.channel <- payload
 }
 
+// Receive is an implementation for IStream
 func (t *LocalStream) Receive(action func(RPC)) {
 	// TODO: should be deferred closed
 	go func() {
@@ -41,6 +34,7 @@ func (t *LocalStream) Receive(action func(RPC)) {
 	}()
 }
 
+// Close is an implementation for IStream
 func (t *LocalStream) Close() {
 	if !t.isClosed {
 		t.isClosed = true
