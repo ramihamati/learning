@@ -30,13 +30,12 @@ func (a Address) Name() string {
 //}
 
 func NewAddress(name string) Address {
-	privateKey := crypto.NewPrivateKey()
-	publicKey := crypto.NewPublicKey(privateKey)
-	address := NewAddressFromPublicKey(publicKey, name)
+	ds := crypto.NewDigitalSignature()
+	address := newAddressFromPublicKey(ds.PublicKey(), name)
 	return address
 }
 
-func NewAddressFromPublicKey(publicKey crypto.PublicKey, name string) Address {
+func newAddressFromPublicKey(publicKey crypto.PublicKey, name string) Address {
 	bytes := publicKey.Bytes()
 	h := sha256.Sum256(bytes)
 	var v [20]byte
