@@ -25,10 +25,7 @@ func (pub *PublicKey) EncodeBinary(w io.Writer) error {
 	if pub.key.Y == nil {
 		panic("Invalid public key. Y is nil. This can happen if the hash was requested on a non-signed block")
 	}
-	if _, err := w.Write(pub.key.X.Bytes()); err != nil {
-		return err
-	}
-	if _, err := w.Write(pub.key.Y.Bytes()); err != nil {
+	if _, err := w.Write(pub.Bytes()); err != nil {
 		return err
 	}
 	return nil
