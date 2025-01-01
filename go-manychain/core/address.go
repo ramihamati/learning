@@ -30,7 +30,7 @@ func (a Address) Name() string {
 //}
 
 func NewAddress(name string) Address {
-	ds := crypto.NewDigitalSignature()
+	ds := crypto.NewDigitalSignatureKeys()
 	address := newAddressFromPublicKey(ds.PublicKey(), name)
 	return address
 }

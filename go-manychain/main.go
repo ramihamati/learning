@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"manychain/core"
+	"manychain/crypto"
 	"manychain/network"
 	"time"
 )
@@ -10,8 +11,20 @@ import (
 func main() {
 	//fmt.Print("test")
 	log.Print("test")
-	TestNetwork()
+	TestSignature()
 	time.Sleep(30 * time.Second)
+}
+
+func TestSignature() {
+	bytes := ([]byte)("test")
+	ds := crypto.NewDigitalSignatureKeys()
+	signature, err := ds.Sign(bytes)
+	if err != nil {
+		panic(err)
+	}
+	println(signature)
+	verified := signature.Verify(ds.PublicKey(), bytes)
+	println(verified)
 }
 
 func TestStreams() {

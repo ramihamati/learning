@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ZLSSettings">
+    <option name="zlsPath" value="$USER_HOME$/zigzls" />
+  </component>
+  <component name="ZigProjectSettings">
+    <option name="explicitPathToStd" value="/snap/zig/11625/lib/std" />
+    <option name="toolchainPath" value="/snap/zig/current" />
+  </component>
+</project>

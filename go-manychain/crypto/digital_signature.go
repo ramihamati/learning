@@ -2,52 +2,21 @@ package crypto
 
 import (
 	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
+	"math/big"
 )
 
-type DigitalSignaturePair struct {
-	publicKey  PublicKey
-	privateKey PrivateKey
-}
-
-func NewDigitalSignature() DigitalSignaturePair {
-	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		panic(err)
-	}
-	privateKey := PrivateKey{
-		key: key,
-	}
-	publicKey := PublicKey{
-		key: &key.PublicKey,
-	}
-
-	return DigitalSignaturePair{
-		publicKey:  publicKey,
-		privateKey: privateKey,
-	}
-}
-
-func (ds DigitalSignaturePair) PublicKey() PublicKey {
-	return ds.publicKey
-}
-func (ds DigitalSignaturePair) PrivateKey() PrivateKey {
-	return ds.privateKey
-}
-
-func (ds DigitalSignaturePair) Sign(msg []byte) (*DigitalSignature, error) {
-	sig, error := ecdsa.SignASN1(rand.Reader, ds.privateKey.key, msg)
-
-	if error != nil {
-		return nil, error
-	}
-
-	return &DigitalSignature{
-		signature: sig,
-	}, nil
-}
-
 type DigitalSignature struct {
-	signature []byte
+	r *big.Int
+	s *big.Int
+}
+
+func NewDigitalSignature(r *big.Int, s *big.Int) DigitalSignature {
+	return DigitalSignature{
+		r: r,
+		s: s,
+	}
+}
+
+func (ds DigitalSignature) Verify(publicKey PublicKey, data []byte) bool {
+	return ecdsa.Verify(publicKey.Key(), data, ds.r, ds.s)
 }
