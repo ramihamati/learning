@@ -11,7 +11,7 @@ import (
 func main() {
 	//fmt.Print("test")
 	log.Print("test")
-	TestSignature()
+	TestBlocks()
 	time.Sleep(30 * time.Second)
 }
 
@@ -51,6 +51,9 @@ func TestAddress() {
 func TestBlocks() {
 	header := core.NewHeader(0, core.HashFromBytes(make([]byte, 0)), core.Timestamp(0), 0, 1)
 	block := core.NewBlock(header)
+	validator := crypto.NewDigitalSignatureKeys()
+	block.Sign(validator)
+
 	hash := block.Hash()
 	log.Printf("{%x}", hash)
 }
