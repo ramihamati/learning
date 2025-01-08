@@ -1,6 +1,10 @@
 version: 1
 validation: sovereign
-accounts: 
+services:
+  explorer:
+    enabled: true
+    port: 8080
+accounts:
 - name: alice
   coins:
   - 20000token
