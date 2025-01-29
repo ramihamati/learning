@@ -1,3 +1,4 @@
+use std::future::IntoFuture;
 use tokio::sync::{mpsc, RwLock};
 use crate::network::network_endpoint_local::LocalNetworkEndpoint;
 use crate::network::rpc::RPC;
@@ -29,15 +30,11 @@ impl Stream for LocalStream {
 
     async fn consume(&mut self) {
         println!("local stream consumer thread starting");
-        loop{
-            match self.consume.recv().await {
-                Some(_) => println!("Received"),
-                None => {
-                    println!("Channel closed, exiting loop.");
-                    break;
-                }
-            }
+        while let Some(message) = self.consume.recv().into_future().await {
+            println!("Received")
         }
+        println!("local stream consumer thread stoping");
+
     }
 }
 

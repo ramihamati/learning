@@ -43,7 +43,7 @@ func TestStreams() {
 }
 
 func TestAddress() {
-	address := core.NewAddress("chain.address.rami")
+	address := core.New()
 	log.Printf("%x", address)
 	log.Printf("%d", len(address.Value()))
 }

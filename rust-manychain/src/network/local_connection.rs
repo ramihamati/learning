@@ -10,7 +10,7 @@ pub struct LocalConnection{
 }
 
 impl LocalConnection {
-    pub fn new(endpoint: LocalNetworkEndpoint) -> LocalConnection {
+    pub fn new<'a>(endpoint: LocalNetworkEndpoint) ->  LocalConnection {
         LocalConnection{
             endpoint: endpoint.clone(),
             stream: LocalStream::new(endpoint.clone())
@@ -23,7 +23,7 @@ impl IConnection for LocalConnection {
     async fn send_message(&self, payload: Vec<u8>) {
         self.stream.send_message(payload).await;
     }
-    async fn consume(mut self) {
+     async fn consume(&mut self) {
         self.stream.consume().await;
     }
 }

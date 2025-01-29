@@ -1,18 +1,18 @@
 mod block;
 mod network;
+mod transaction;
 
 use {
     sha2::{Digest, Sha256},
     std::fmt,
 };
-use crate::block::BlockHashContent;
 use bincode::{config, Decode, Encode};
-use std::str;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::time::sleep;
 use crate::network::connection::IConnection;
+use crate::network::local_connection;
 use crate::network::local_connection::LocalConnection;
 use crate::network::network_endpoint_local::LocalNetworkEndpoint;
 
@@ -62,22 +62,28 @@ async fn main() {
     // println!("Hello, world! {}",  hasher2.result());
 
     let node1 = LocalNetworkEndpoint::new("node1".to_string());
+
     let node2 = LocalNetworkEndpoint::new("node2".to_string());
-
-    let conn1 =  Arc::new(Mutex::new(LocalConnection::new(node1.clone())));
-    let cloned1 =  Arc::clone(&conn1);
-
     let conn2 = LocalConnection::new(node1.clone());
 
-    tokio::task::spawn(async move {
-       let mut locked = cloned1.lock().await;
-        locked.consume().await;
+    let conn1 = Arc::new(Mutex::new(LocalConnection::new(node1.clone())));
+    let conn1_clone = Arc::clone(&conn1);
+    let conn2_clone = Arc::clone(&conn1);
+
+    tokio::task::spawn_blocking(move || {
+        tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(async move {
+                let mut conn1_lock = conn1_clone.lock().await;
+                conn1_lock.consume().await;
+            });
+    });
+
+    tokio::spawn(async move {
+        let mut conn1_lock = conn2_clone.lock().await;
+        conn1_lock.send_message(Vec::from("test1")).await;
     }).await.unwrap();
 
-    conn1.lock().await.send_message(Vec::from("test")).await;
-    conn1.lock().await.send_message(Vec::from("test")).await;
-    conn1.lock().await.send_message(Vec::from("test")).await;
-
+    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
     sleep(Duration::from_secs(10)).await;
-    println!("stop");
 }

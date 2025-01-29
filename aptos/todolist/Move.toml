@@ -4,10 +4,10 @@ version = "1.0.0"
 authors = []
 
 [addresses]
-advanced_todo_list_addr = "0x50afb71a2ca3764febce00fb00d21a5e2ebcf11f753bc0e2edc4f7c178e3e1a8"
+devaddr = "0x50afb71a2ca3764febce00fb00d21a5e2ebcf11f753bc0e2edc4f7c178e3e1a8"
 
 [dev-addresses]
-advanced_todo_list_addr = "0x50afb71a2ca3764febce00fb00d21a5e2ebcf11f753bc0e2edc4f7c178e3e1a8"
+devaddr = "0x50afb71a2ca3764febce00fb00d21a5e2ebcf11f753bc0e2edc4f7c178e3e1a8"
 
 [dependencies.AptosFramework]
 git = "https://github.com/aptos-labs/aptos-framework.git"

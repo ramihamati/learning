@@ -8,12 +8,12 @@ import (
 
 // TODO: transaction can have only one Id, a Signature and Data associated to it can
 // be stored sepparaetlly
-type Transaction interface {
+type ITransaction interface {
 	EncodeBinary(w io.Writer) error
 }
 
 type SignedTransaction struct {
-	Transaction Transaction
+	Transaction ITransaction
 	Signature   types.Signature
 }
 
