@@ -11,10 +11,9 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::time::sleep;
-use crate::network::connection::IConnection;
-use crate::network::local_connection;
-use crate::network::local_connection::LocalConnection;
-use crate::network::network_endpoint_local::LocalNetworkEndpoint;
+use crate::network::connections::local_connection::LocalConnection;
+use crate::network::endpoints::network_endpoint_local::LocalNetworkEndpoint;
+use crate::network::i_connection::IConnection;
 
 const HASH_BYTES: usize = 32;
 pub struct Hash(pub [u8; HASH_BYTES]);
@@ -67,23 +66,22 @@ async fn main() {
     let conn2 = LocalConnection::new(node1.clone());
 
     let conn1 = Arc::new(Mutex::new(LocalConnection::new(node1.clone())));
-    let conn1_clone = Arc::clone(&conn1);
-    let conn2_clone = Arc::clone(&conn1);
 
-    tokio::task::spawn_blocking(move || {
-        tokio::runtime::Runtime::new()
-            .unwrap()
-            .block_on(async move {
-                let mut conn1_lock = conn1_clone.lock().await;
-                conn1_lock.consume().await;
-            });
-    });
-
-    tokio::spawn(async move {
-        let mut conn1_lock = conn2_clone.lock().await;
-        conn1_lock.send_message(Vec::from("test1")).await;
-    }).await.unwrap();
+    tokio::join!(
+        send_message(Arc::clone(&conn1)),
+        send_message(Arc::clone(&conn1)),
+        recv_message(Arc::clone(&conn1)));
 
     tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
     sleep(Duration::from_secs(10)).await;
+}
+
+async fn send_message(arc : Arc<Mutex<LocalConnection>>) {
+    let mut conn1_lock = arc.lock().await;
+    conn1_lock.send_message(Vec::from("test1")).await;
+}
+
+async fn recv_message(arc : Arc<Mutex<LocalConnection>>) {
+    let mut conn1_lock = arc.lock().await;
+    conn1_lock.consume().await;
 }

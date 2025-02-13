@@ -1,4 +1,4 @@
-use crate::network::network_endpoint::INetworkEndpoint;
+use crate::network::endpoints::i_network_endpoint::INetworkEndpoint;
 
 pub trait IConnection {
     type T : INetworkEndpoint;

@@ -1,6 +1,6 @@
 use std::hash::{Hash};
 use std::net::IpAddr;
-use crate::network::network_endpoint::INetworkEndpoint;
+use crate::network::endpoints::i_network_endpoint::INetworkEndpoint;
 
 #[derive(Debug, Eq, Hash, PartialEq, Clone)]
 pub struct SocketNetworkEndpoint {

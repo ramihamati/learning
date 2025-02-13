@@ -1,8 +1,8 @@
 use std::future::IntoFuture;
 use tokio::sync::{mpsc, RwLock};
-use crate::network::network_endpoint_local::LocalNetworkEndpoint;
-use crate::network::rpc::RPC;
-use crate::network::stream::Stream;
+use crate::network::endpoints::network_endpoint_local::LocalNetworkEndpoint;
+use crate::network::streams::rpc::RPC;
+use crate::network::streams::stream::Stream;
 
 pub struct LocalStream{
     consume: mpsc::Receiver<RPC>,

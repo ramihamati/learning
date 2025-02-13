@@ -1,5 +1,5 @@
 use std::hash::{Hash};
-use crate::network::network_endpoint::INetworkEndpoint;
+use crate::network::endpoints::i_network_endpoint::INetworkEndpoint;
 
 #[derive(Debug, Eq, Hash, PartialEq, Clone)]
 pub struct LocalNetworkEndpoint {

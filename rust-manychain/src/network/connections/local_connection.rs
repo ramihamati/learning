@@ -1,8 +1,7 @@
-use std::sync::Arc;
-use crate::network::connection::IConnection;
-use crate::network::network_endpoint_local::LocalNetworkEndpoint;
+use crate::network::connections::i_connection::IConnection;
+use crate::network::endpoints::network_endpoint_local::LocalNetworkEndpoint;
 use crate::network::stream::Stream;
-use crate::network::stream_local::LocalStream;
+use crate::network::streams::stream_local::LocalStream;
 
 pub struct LocalConnection{
     endpoint: LocalNetworkEndpoint,
@@ -23,7 +22,7 @@ impl IConnection for LocalConnection {
     async fn send_message(&self, payload: Vec<u8>) {
         self.stream.send_message(payload).await;
     }
-     async fn consume(&mut self) {
+    async fn consume(&mut self) {
         self.stream.consume().await;
     }
 }

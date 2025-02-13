@@ -21,21 +21,15 @@ pub fn GetName (self: Human) []const u8 {
     }
 }
 pub fn main() !void {
-    const a1 = address.Address.new();
+    const p1 = Leader{
+        .name = "ramis"
+    };
 
-    std.debug.print("address is {x}\n", .{a1.Value()});
-    std.debug.print("address is {}\n", .{a1.Value()[0]});
-    try await Huh();
-    //
-    // const p1 = Leader{
-    //     .name = "ramis"
-    // };
-    //
-    // const human = Human{.leader = p1};
-    //
-    // const p2 = GetName(human);
-    //
-    // try stdout.print("person name {s}\n", .{p2} );
+    const human = Human{.leader = p1};
+
+    const p2 = GetName(human);
+
+    std.debug.print("person name {s}\n", .{p2} );
     // try stdout.print("Run `zig build test` to run the tests.\n", .{});
 }
 
