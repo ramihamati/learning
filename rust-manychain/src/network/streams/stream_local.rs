@@ -1,4 +1,5 @@
 use std::future::IntoFuture;
+use std::ops::Deref;
 use tokio::sync::{mpsc, RwLock};
 use crate::network::endpoints::network_endpoint_local::LocalNetworkEndpoint;
 use crate::network::streams::rpc::RPC;
@@ -7,8 +8,7 @@ use crate::network::streams::stream::Stream;
 pub struct LocalStream{
     consume: mpsc::Receiver<RPC>,
     produce: mpsc::Sender<RPC>,
-    lock : RwLock<()>,
-    addr: LocalNetworkEndpoint,
+    addr:  LocalNetworkEndpoint,
 }
 
 impl LocalStream {
@@ -17,7 +17,6 @@ impl LocalStream {
         LocalStream{
             consume : rx,
             produce : tx,
-            lock : RwLock::new(()),
             addr
         }
     }
@@ -30,10 +29,13 @@ impl Stream for LocalStream {
 
     async fn consume(&mut self) {
         println!("local stream consumer thread starting");
+        let name = self.addr.formatted_address();
+
         while let Some(message) = self.consume.recv().into_future().await {
-            println!("Received")
+            let data = String::from_utf8(message.payload).unwrap();
+            println!("{} Received {}" , name, data)
         }
-        println!("local stream consumer thread stoping");
+        println!("local stream consumer thread stopping");
 
     }
 }

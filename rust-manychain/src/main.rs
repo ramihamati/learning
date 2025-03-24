@@ -68,17 +68,17 @@ async fn main() {
     let conn1 = Arc::new(Mutex::new(LocalConnection::new(node1.clone())));
 
     tokio::join!(
-        send_message(Arc::clone(&conn1)),
-        send_message(Arc::clone(&conn1)),
+        send_message(Arc::clone(&conn1), String::from("hey 1")),
+        send_message(Arc::clone(&conn1), String::from("hey 2")),
         recv_message(Arc::clone(&conn1)));
 
     tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
     sleep(Duration::from_secs(10)).await;
 }
 
-async fn send_message(arc : Arc<Mutex<LocalConnection>>) {
+async fn send_message(arc : Arc<Mutex<LocalConnection>>, message: String) {
     let mut conn1_lock = arc.lock().await;
-    conn1_lock.send_message(Vec::from("test1")).await;
+    conn1_lock.send_message(Vec::from(message)).await;
 }
 
 async fn recv_message(arc : Arc<Mutex<LocalConnection>>) {

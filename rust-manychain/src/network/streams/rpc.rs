@@ -1,6 +1,6 @@
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RPC{
-    payload : Vec<u8>,
+   pub payload : Vec<u8>,
 }
 
 impl RPC{

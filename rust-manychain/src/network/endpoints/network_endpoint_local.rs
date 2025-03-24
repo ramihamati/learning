@@ -10,8 +10,8 @@ impl LocalNetworkEndpoint {
     pub fn new(name: String) -> LocalNetworkEndpoint {
         LocalNetworkEndpoint { name }
     }
-    fn formatted_address(self) -> String {
-        return self.name;
+   pub fn formatted_address<'a>(self) -> &'a String {
+        return &self.name;
     }
 }
 impl INetworkEndpoint for LocalNetworkEndpoint {}
