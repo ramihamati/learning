@@ -1,7 +1,7 @@
 ﻿using MassTransit;
 using System.Reflection;
 
-namespace weroutes.infrastructure.common.masstransitformatters;
+namespace sagas.shared;
 
 public class WeRoutesEndpointNameFormatter : IEndpointNameFormatter
 {

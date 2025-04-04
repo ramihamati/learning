@@ -1,4 +1,4 @@
-﻿namespace weroutes.infrastructure.common.masstransitformatters;
+﻿namespace sagas.shared;
 
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Interface, AllowMultiple = false, Inherited = false)]
 public class ChannelNameAttribute : Attribute

@@ -1,3 +1,0 @@
-/mnt/extension/git-learn/clion/cmake-build-debug/CMakeFiles/clion.dir
-/mnt/extension/git-learn/clion/cmake-build-debug/CMakeFiles/edit_cache.dir
-/mnt/extension/git-learn/clion/cmake-build-debug/CMakeFiles/rebuild_cache.dir
